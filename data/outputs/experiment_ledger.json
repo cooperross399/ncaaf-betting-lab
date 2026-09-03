@@ -51,6 +51,227 @@
         2025
       ],
       "outcome": "0.5 chosen on held-out 2025; +0.069 nats vs normal"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "book implied margin dispersion",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; all inside detectable floors"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "book vs correctly-scaled normal",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; all inside detectable floors"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "implied SD vs spread size",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; all inside detectable floors"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "underdog moneyline exploit",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; all inside detectable floors"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "line movement on model disagreement",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; all inside detectable floors"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "line movement on shape disagreement",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; all inside detectable floors"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "total movement",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; all inside detectable floors"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "movement power floor",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; all inside detectable floors"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "outlier vs consensus sweep",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; all inside detectable floors"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "outlier control: both sides bet",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; all inside detectable floors"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "outlier control: single book",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; all inside detectable floors"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "outlier control: stale lines",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; all inside detectable floors"
+    },
+    {
+      "search": "margin-architecture",
+      "name": "shape from unconditional margins",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "spread-conditioning is the fix; the shape itself is not demonstrated"
+    },
+    {
+      "search": "margin-architecture",
+      "name": "shape from residuals",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "spread-conditioning is the fix; the shape itself is not demonstrated"
+    },
+    {
+      "search": "margin-architecture",
+      "name": "shape conditioned on spread bucket",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "spread-conditioning is the fix; the shape itself is not demonstrated"
+    },
+    {
+      "search": "margin-architecture",
+      "name": "bandwidth 0.4",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "spread-conditioning is the fix; the shape itself is not demonstrated"
+    },
+    {
+      "search": "margin-architecture",
+      "name": "bandwidth 0.8",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "spread-conditioning is the fix; the shape itself is not demonstrated"
     }
   ]
 }

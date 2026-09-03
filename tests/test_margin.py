@@ -16,8 +16,9 @@ import numpy as np
 import pytest
 
 from ncaaf_betting_lab.models.margin import (
+    bucket_for,
     MAX_TILT_POINTS,
-    TOTAL_BUCKETS,
+    SPREAD_BUCKETS,
     bucket_for,
     build,
     empirical_margin_pmf,
@@ -39,7 +40,7 @@ def _lumpy() -> dict[int, float]:
 
 
 def _shapes() -> dict:
-    return {bucket: _lumpy() for bucket in TOTAL_BUCKETS}
+    return {bucket: _lumpy() for bucket in SPREAD_BUCKETS}
 
 
 def test_the_tilt_moves_the_mean_and_keeps_the_lumps() -> None:
@@ -82,32 +83,29 @@ def test_both_sides_and_the_push_account_for_everything() -> None:
     assert home + away + push == pytest.approx(1.0, abs=1e-9)
 
 
-def test_dispersion_is_conditioned_on_the_total() -> None:
-    """Measured college margin sd runs 16.1 at totals under 45 and 22.7 above
-    55. One pooled shape would price a 70-point game with a 40-point game's
-    dispersion."""
-    narrow = {b: _lumpy() for b in TOTAL_BUCKETS}
-    wide = dict(narrow)
-    wide[(65.0, 1000.0)] = {m: p for m, p in
-                            empirical_margin_pmf(list(range(-60, 61))).items()}
+def test_the_shape_is_conditioned_on_the_SPREAD_not_the_total() -> None:
+    """The error this file shipped for a day.
 
-    low = build(narrow, implied_margin=0.0, total=40.0)
-    high = build(wide, implied_margin=0.0, total=70.0)
+    Conditioning on the total left the shape carrying UNCONDITIONAL dispersion
+    of ~20.5, when the dispersion given a known spread is 15.29. Ninety-two per
+    cent of that version's apparent win over a normal was the benchmark being
+    wrong the same way.
+    """
+    shapes = {b: _lumpy() for b in SPREAD_BUCKETS}
 
-    def sd(model):
-        xs = np.array(sorted(model.pmf))
-        w = np.array([model.pmf[int(x)] for x in xs])
-        mu = (xs * w).sum()
-        return float(np.sqrt(((xs - mu) ** 2 * w).sum()))
-
-    assert sd(high) > sd(low)
+    # Two fixtures with the same total and very different spreads must draw
+    # from different buckets; the total must not enter the choice at all.
+    assert bucket_for(-3.5) != bucket_for(-21.0)
+    near = build(shapes, implied_margin=3.5, total=52.0)
+    far = build(shapes, implied_margin=3.5, total=70.0)
+    assert near.pmf == far.pmf
 
 
 def test_a_bucket_with_no_shape_refuses_rather_than_borrowing_one() -> None:
-    """A shape borrowed from another bucket prices the game with the wrong
-    dispersion, silently."""
+    """A borrowed shape prices at the wrong dispersion AND puts its key-number
+    mass in the wrong place — the two failures this file exists to avoid."""
     with pytest.raises(KeyError, match="wrong dispersion"):
-        build({TOTAL_BUCKETS[0]: _lumpy()}, implied_margin=0.0, total=70.0)
+        build({SPREAD_BUCKETS[0]: _lumpy()}, implied_margin=10.0, total=52.0)
 
 
 def test_an_extreme_implied_margin_is_refused() -> None:
@@ -123,9 +121,10 @@ def test_a_target_outside_the_support_is_refused() -> None:
 
 
 def test_bucket_boundaries_are_closed_below_and_open_above() -> None:
-    assert bucket_for(44.9) == (0.0, 45.0)
-    assert bucket_for(45.0) == (45.0, 55.0)
-    assert bucket_for(999.0) == TOTAL_BUCKETS[-1]
+    assert bucket_for(2.9) == (0.0, 3.0)
+    assert bucket_for(3.0) == (3.0, 7.0)
+    assert bucket_for(999.0) == SPREAD_BUCKETS[-1]
+    assert bucket_for(-999.0) == SPREAD_BUCKETS[0]
 
 
 def test_an_empty_history_yields_no_shape_rather_than_a_flat_one() -> None:

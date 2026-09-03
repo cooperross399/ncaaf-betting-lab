@@ -18,6 +18,52 @@ So this model does not convolve. It takes an **empirical margin distribution**
 and tilts that directly to the mean the market implies. The key numbers are
 preserved because they were never taken apart.
 
+## The error this file shipped for a day, and what survived it
+
+The first version conditioned its empirical shape on the **total** and reported
+a +0.0755 nats/game win over a normal on held-out data. That number was real
+and the conclusion drawn from it was wrong.
+
+The benchmark was a normal with sd 20.13 — the **unconditional** margin
+dispersion. But once the market's spread is known, the dispersion that matters
+is the **conditional** one, and the variance decomposition is exact:
+
+    var(margin) 412.3 = var(implied margin) 180.3 + var(residual) 233.8
+    unconditional sd 20.31        conditional dispersion 15.29
+
+So the shape was built from unconditional margins, carried a dispersion near
+20.5, and was scored against a normal that was wrong the same way. Decomposed
+on the same held-out season:
+
+    claimed gain vs normal(20.13)      +0.0755
+    pure rescale 20.13 -> 15.29        +0.0697   <- 92% of it
+    the shape against a correct normal  +0.0057   <- essentially nothing
+
+**Ninety-two per cent of the finding was the benchmark's variance.** The clue
+was printed in that same run — "residual sd 15.04 against raw margin sd 20.18"
+— as a sanity check, and not acted on.
+
+Two further attempts, both measured on the same held-out season and both
+recorded because they cost degrees of freedom:
+
+* **Shape from residuals** (margin minus implied margin, shifted back): gets the
+  dispersion right, 15.38 against a target of 15.29, and **destroys the key
+  numbers** — P(|m| = 3) falls to 3.27% against a realised 11.39%, because
+  rounding the shift smears the lumps across margins. It scored **-0.0765
+  nats**, an interval excluding zero on the wrong side.
+* **Shape conditioned on the spread bucket**, which is what this file now does:
+  keeps margins on the integer grid where the lumps live and gets the
+  dispersion right by construction. Gain over a correctly-scaled normal
+  **+0.0142 nats, 95% interval [-0.0447, +0.0732] — includes zero even
+  uncorrected.**
+
+So the honest position: **conditioning on the spread is a real and large fix**
+(the rescale alone is +0.0697 at t = 6.92), and **the empirical shape is not
+demonstrated to beat a correctly-scaled normal.** It is kept because it prices
+whole-number lines from measured mass — P(|m| = 3) of 8.93% against a normal's
+~4% and a realised 11.39% — and a push denominator taken from a normal is known
+to be wrong even when the log-likelihood cannot tell.
+
 ## Two things measured on college data rather than inherited
 
 **College key numbers are flatter and reach further.** Measured over 1,606
@@ -53,16 +99,26 @@ from dataclasses import dataclass
 
 import numpy as np
 
-#: Total buckets the empirical margin shape is conditioned on, with the
-#: measured margin sd for each. Boundaries chosen from the measurement above,
-#: not from intuition, and deliberately coarse: four buckets over 1,606 games
-#: is about 400 apiece, which is enough for a shape and not enough for more.
-TOTAL_BUCKETS: tuple[tuple[float, float], ...] = (
-    (0.0, 45.0),
-    (45.0, 55.0),
-    (55.0, 65.0),
-    (65.0, 1000.0),
+#: Spread buckets the empirical shape is conditioned on.
+#:
+#: **The spread, not the total.** Conditioning on the total was the first
+#: version's error: it left the shape carrying unconditional dispersion of ~20.5
+#: when the dispersion given a known spread is 15.29, and 92% of that version's
+#: apparent win was the benchmark being wrong the same way.
+#:
+#: Boundaries follow the key numbers rather than an even split, because a
+#: bucket that straddles 3 and 7 averages two different shapes into one. Narrow
+#: near pick'em where the mass is, wide in the tails where 3,056 training games
+#: give 45 in the widest bucket and a finer split would be noise.
+SPREAD_BUCKETS: tuple[tuple[float, float], ...] = (
+    (-60.0, -24.0), (-24.0, -14.0), (-14.0, -7.0), (-7.0, -3.0), (-3.0, 0.0),
+    (0.0, 3.0), (3.0, 7.0), (7.0, 14.0), (14.0, 24.0), (24.0, 60.0),
 )
+
+#: Games a bucket needs before it gets a shape. Below it the shape is noise
+#: wearing an empirical distribution's clothes, and the caller is told rather
+#: than handed one.
+MINIMUM_BUCKET_GAMES = 150
 
 #: Widest tilt allowed before the model refuses. A tilt this large is being
 #: asked to move an empirical shape further than the data supports, and the
@@ -70,11 +126,12 @@ TOTAL_BUCKETS: tuple[tuple[float, float], ...] = (
 MAX_TILT_POINTS = 35.0
 
 
-def bucket_for(total: float) -> tuple[float, float]:
-    for low, high in TOTAL_BUCKETS:
-        if low <= total < high:
+def bucket_for(implied_margin: float) -> tuple[float, float]:
+    """The spread bucket a fixture belongs to, from the market's own number."""
+    for low, high in SPREAD_BUCKETS:
+        if low <= implied_margin < high:
             return (low, high)
-    return TOTAL_BUCKETS[-1]
+    return SPREAD_BUCKETS[-1] if implied_margin > 0 else SPREAD_BUCKETS[0]
 
 
 #: How far the smoothing kernel reaches, in points. Narrow on purpose: it has
@@ -212,7 +269,7 @@ def build(
     margins_by_bucket: dict[tuple[float, float], dict[int, float]],
     *,
     implied_margin: float,
-    total: float,
+    total: float = 0.0,
 ) -> MarginModel:
     """A margin model for one fixture, from the market's spread and total.
 
@@ -225,14 +282,14 @@ def build(
             f"{MAX_TILT_POINTS:.0f} points, where the empirical shape has too "
             "little data to be tilted honestly. No opinion is the answer."
         )
-    bucket = bucket_for(total)
+    bucket = bucket_for(implied_margin)
     pmf = margins_by_bucket.get(bucket)
     if not pmf:
         raise KeyError(
-            f"No empirical margin shape for total bucket {bucket}. A shape "
-            "borrowed from another bucket would price this game with the wrong "
-            "dispersion — measured college margin sd runs 16.1 at low totals "
-            "to 22.7 at high ones."
+            f"No empirical margin shape for spread bucket {bucket}. A shape "
+            "borrowed from another bucket prices the game at the wrong "
+            "dispersion and puts its key-number mass in the wrong place — the "
+            "two failures this file exists to avoid."
         )
     return MarginModel(
         pmf=tilt_to_mean(pmf, implied_margin),
