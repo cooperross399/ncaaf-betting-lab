@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.DS_Store
+
+# Bought prices and fetched feeds. Large, re-fetchable, and the raw cache is
+# where provider event ids live — which are 32-hex and the same shape as an
+# API key, so the secrets guard exempts them BY RECORDED VALUE, never by
+# directory.
+data/raw/
+data/processed/*.csv
+data/staging/
