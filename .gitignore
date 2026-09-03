@@ -11,3 +11,6 @@ __pycache__/
 data/raw/
 data/processed/*.csv
 data/staging/
+
+.pytest_cache/
+*.egg-info/
