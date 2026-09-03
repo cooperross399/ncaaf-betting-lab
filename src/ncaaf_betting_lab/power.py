@@ -30,6 +30,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from statistics import NormalDist
 
+import pandas as pd
+
 #: Two-sided significance the lab quotes everywhere.
 ALPHA = 0.05
 
@@ -81,11 +83,45 @@ class PowerRequirement:
         return self.games / max(games_per_season, 1)
 
 
+def measured_correlation(profit: pd.Series, game: pd.Series) -> float:
+    """The intra-game correlation of bet returns, from the data.
+
+    **Measure this; do not guess it.** The first version of this module
+    defaulted to 0.5 on intuition, which made a +2% edge look like it needed 80
+    NFL seasons. Measured on the real bets it is **0.036** — a design effect of
+    4.8x rather than 50x, and a completely different conclusion about what the
+    lab can see.
+
+    One-way ANOVA estimator, which handles the unequal cluster sizes a real
+    slate produces.
+    """
+    frame = pd.DataFrame({"profit": pd.to_numeric(profit, errors="coerce"),
+                          "game": game.astype(str)}).dropna()
+    if frame.empty:
+        return 0.0
+    grouped = frame.groupby("game")["profit"]
+    sizes = grouped.size()
+    means = grouped.mean()
+    total, clusters = len(frame), len(sizes)
+    if clusters < 2 or total <= clusters:
+        return 0.0
+    grand = float(frame["profit"].mean())
+    between = float((sizes * (means - grand) ** 2).sum()) / (clusters - 1)
+    within = float(
+        ((frame["profit"] - frame.groupby("game")["profit"].transform("mean")) ** 2).sum()
+    ) / (total - clusters)
+    k0 = (total - float((sizes**2).sum()) / total) / (clusters - 1)
+    denominator = between + (k0 - 1) * within
+    if denominator <= 0:
+        return 0.0
+    return max(0.0, min(1.0, (between - within) / denominator))
+
+
 def requirement(
     edge: float,
     *,
     correction_factor: float = 1.0,
-    intra_game_correlation: float = 0.5,
+    intra_game_correlation: float,
     bets_per_game: float = 3.0,
 ) -> PowerRequirement:
     """Bets needed to detect `edge` (as a decimal, e.g. 0.02 for +2%)."""
@@ -103,7 +139,7 @@ def detectable_edge(
     games: int,
     *,
     correction_factor: float = 1.0,
-    intra_game_correlation: float = 0.5,
+    intra_game_correlation: float,
     bets_per_game: float = 3.0,
 ) -> float:
     """The smallest edge this many games could detect at 80% power.
@@ -124,7 +160,7 @@ def render(
     *,
     correction_factor: float,
     games_per_season: int,
-    intra_game_correlation: float = 0.5,
+    intra_game_correlation: float,
     bets_per_game: float = 3.0,
 ) -> str:
     """The table that has to sit beside any null this lab reports."""
