@@ -38,6 +38,22 @@ from dataclasses import dataclass, field
 #: cautious estimate.
 MINIMUM_RATED_GAMES = 3
 
+#: The bucket a fixture with no known kickoff lands in.
+#:
+#: **401 of 888 games in 2026 (45.2%) carry `start_time_tbd`**, and the
+#: placeholder timestamp beside it is not a kickoff — it is a guess the feed is
+#: honest enough to flag. Weeks 1-3 have none; from week 4 onward roughly forty
+#: a week are TBD.
+#:
+#: You cannot guard a kickoff you do not know. Everything downstream keys on
+#: it: the kickoff guard that refuses a started game, the league-date rule that
+#: decides which ledger day a game belongs to, and every lead-time calculation.
+#: A game frozen against a placeholder may already have kicked — and college ET
+#: kickoffs span 00:00 to 23:59, with 42 games at 22:00 or later, so a TBD that
+#: resolves across midnight moves to a different ledger day AFTER the opinion
+#: is frozen, in a ledger that never reprices.
+KICKOFF_UNKNOWN = "kickoff_tbd"
+
 #: The bucket an uncoverable fixture lands in. A distinct name, because
 #: "we do not know these teams" and "we looked and had nothing to say" are
 #: different facts and the accounting identity must be able to tell them apart.
@@ -52,6 +68,8 @@ class Coverage:
     away: str
     home_games: int | None
     away_games: int | None
+    #: Whether the feed flagged this game's start time as still to be decided.
+    kickoff_tbd: bool = False
 
     @property
     def missing(self) -> tuple[str, ...]:
@@ -74,15 +92,21 @@ class Coverage:
 
     @property
     def is_priceable(self) -> bool:
-        return not self.missing and not self.thin
+        return not self.missing and not self.thin and not self.kickoff_tbd
 
     def reason(self) -> str:
         """Why this fixture is not priceable, in words a card can print.
 
         Never a bare "no opinion". A reader has to be able to tell an FCS
-        opponent from a Week 2 team from a model that simply disagreed with
-        nothing.
+        opponent from a Week 2 team from a game whose kickoff nobody has set
+        from a model that simply disagreed with nothing.
         """
+        if self.kickoff_tbd:
+            return (
+                "kickoff is still to be announced, so it cannot be guarded, "
+                "dated to a ledger day, or given a lead time — and a game "
+                "frozen against a placeholder may already have kicked"
+            )
         if self.missing:
             return (
                 f"{' and '.join(self.missing)} carries no rating — most likely "
@@ -104,7 +128,11 @@ class Coverage:
 
 
 def check(
-    home: str, away: str, games_played: dict[str, int]
+    home: str,
+    away: str,
+    games_played: dict[str, int],
+    *,
+    kickoff_tbd: bool = False,
 ) -> Coverage:
     """Coverage for one fixture. `games_played` is rated games per team."""
     return Coverage(
@@ -112,6 +140,7 @@ def check(
         away=away,
         home_games=games_played.get(home),
         away_games=games_played.get(away),
+        kickoff_tbd=bool(kickoff_tbd),
     )
 
 
@@ -122,15 +151,27 @@ class CoverageTally:
     priceable: int = 0
     missing_rating: int = 0
     thin_rating: int = 0
+    kickoff_unknown: int = 0
     reasons: list[str] = field(default_factory=list)
 
     @property
     def total(self) -> int:
-        return self.priceable + self.missing_rating + self.thin_rating
+        return (
+            self.priceable
+            + self.missing_rating
+            + self.thin_rating
+            + self.kickoff_unknown
+        )
 
     def record(self, coverage: Coverage) -> None:
         if coverage.is_priceable:
             self.priceable += 1
+        elif coverage.kickoff_tbd:
+            # Checked before the rating buckets: a game nobody can date is not
+            # a rating problem, and calling it one would hide 45% of the
+            # season behind the wrong explanation.
+            self.kickoff_unknown += 1
+            self.reasons.append(coverage.reason())
         elif coverage.missing:
             self.missing_rating += 1
             self.reasons.append(coverage.reason())
@@ -147,7 +188,8 @@ class CoverageTally:
             f"**{self.priceable} of {self.total} fixture(s) priceable.** "
             f"{self.missing_rating} carry a team with no rating at all "
             f"(`{UNRATED_OPPONENT}`), {self.thin_rating} a team below the "
-            f"{MINIMUM_RATED_GAMES}-game floor. These are counted, not "
+            f"{MINIMUM_RATED_GAMES}-game floor, {self.kickoff_unknown} have no "
+            f"announced kickoff (`{KICKOFF_UNKNOWN}`). These are counted, not "
             "dropped: a skipped game must be visible as a number rather than "
             "as an absence."
         )

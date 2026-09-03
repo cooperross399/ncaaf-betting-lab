@@ -99,3 +99,47 @@ def test_checking_nothing_is_an_absence_not_a_pass() -> None:
 
     assert "absence, not a pass" in summary
     assert "priceable" not in summary.split(".")[0]
+
+
+def test_a_game_with_no_announced_kickoff_is_refused() -> None:
+    """401 of 888 games in 2026 (45.2%) carry `start_time_tbd`, and the
+    timestamp beside it is a placeholder the feed is honest enough to flag.
+
+    You cannot guard a kickoff you do not know. Everything downstream keys on
+    it: the guard that refuses a started game, the league-date rule that
+    decides which ledger day a game belongs to, and every lead time.
+    """
+    from ncaaf_betting_lab.coverage import KICKOFF_UNKNOWN
+
+    coverage = check("Ohio State", "Michigan", PLAYED, kickoff_tbd=True)
+
+    assert not coverage.is_priceable
+    assert "still to be announced" in coverage.reason()
+    assert KICKOFF_UNKNOWN == "kickoff_tbd"
+
+
+def test_an_unknown_kickoff_is_reported_before_a_rating_problem() -> None:
+    """A game nobody can date is not a rating problem, and calling it one would
+    hide 45% of the season behind the wrong explanation."""
+    coverage = check("Ohio State", "Mercer", PLAYED, kickoff_tbd=True)
+
+    assert "still to be announced" in coverage.reason()
+
+
+def test_the_tally_counts_unknown_kickoffs_in_their_own_bucket() -> None:
+    tally = CoverageTally()
+    tally.record(check("Ohio State", "Michigan", PLAYED))
+    tally.record(check("Ohio State", "Michigan", PLAYED, kickoff_tbd=True))
+    tally.record(check("Ohio State", "Mercer", PLAYED))
+
+    assert tally.total == 3
+    assert tally.kickoff_unknown == 1
+    assert tally.priceable == 1
+    assert "kickoff_tbd" in tally.summary()
+
+
+def test_a_known_kickoff_does_not_block_an_otherwise_good_fixture() -> None:
+    """The default must be permissive, or every fixture is refused and the
+    gate reads as a lab with no opinions rather than a lab with a guard."""
+    assert check("Ohio State", "Michigan", PLAYED, kickoff_tbd=False).is_priceable
+    assert check("Ohio State", "Michigan", PLAYED).is_priceable
