@@ -111,11 +111,15 @@ NCAAF = League(
     key="ncaaf",
     title="NCAAF",
     provider_sport_key="americanfootball_ncaaf",
-    # There is no nflverse for college football. The adapter is the single
-    # largest difference between this lab and the one it was ported from, and
-    # it is chosen and costed in `docs/build_order.md` rather than assumed
-    # here.
-    data_adapter="ncaaf_betting_lab.data.collegefootballdata",
+    # There is no nflverse for college football, and choosing what replaces it
+    # was the largest open question here. cfbfastR commits CSV directly to a
+    # public repository — a file download, so no API key and no rate limit —
+    # and its schedule carries `home_division`/`away_division` per game, which
+    # is what lets this lab decline the 127 of 888 fixtures that put an FBS
+    # team against an opponent it has no rating for. The same project's REST
+    # API is capped at 1,000 calls a month on the free tier and omits nothing
+    # this needs; the files are simply better. See data/cfbfastr.py.
+    data_adapter="ncaaf_betting_lab.data.cfbfastr",
     market_registry="ncaaf_betting_lab.markets",
     # Games run from Hawaii to the east coast and kick from Tuesday night to
     # Saturday midnight. Eastern is the calendar the schedule is published in;
