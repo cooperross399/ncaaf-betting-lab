@@ -2,13 +2,14 @@
 
 **A search that runs every week is not twelve tests. It is twelve tests a week, forever.** Correcting today's findings across today's twelve is a lie if twelve more were tested last week. At a nominal 5% threshold roughly one look in twenty clears by chance, so an automated edge-hunter without a cumulative tally does not find edges — it manufactures them on a schedule, with clean intervals and good prose.
 
-**21 distinct hypotheses tested.** Any new 95% interval must be widened by **x1.55** before it means what it says.
+**78 distinct hypotheses tested.** Any new 95% interval must be widened by **x1.74** before it means what it says.
 
 | Search | Hypotheses |
 |:---|---:|
-| steps-2-to-5 | 12 |
+| steps-2-to-5 | 66 |
 | margin-architecture | 5 |
 | margin-shape | 4 |
+| ratings-residual | 3 |
 
 | # | Search | Hypothesis | Seasons | Tested | Outcome |
 |---:|:---|:---|:---|:---|:---|
@@ -33,6 +34,63 @@
 | 19 | margin-architecture | shape conditioned on spread bucket | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | spread-conditioning is the fix; the shape itself is not demonstrated |
 | 20 | margin-architecture | bandwidth 0.4 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | spread-conditioning is the fix; the shape itself is not demonstrated |
 | 21 | margin-architecture | bandwidth 0.8 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | spread-conditioning is the fix; the shape itself is not demonstrated |
+| 22 | steps-2-to-5 | step4 real-book consensus / spread / abs(d)>=0.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 23 | steps-2-to-5 | step4 real-book consensus / spread / abs(d)>=1.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 24 | steps-2-to-5 | step4 real-book consensus / spread / abs(d)>=1.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 25 | steps-2-to-5 | step4 real-book consensus / spread / abs(d)>=2.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 26 | steps-2-to-5 | step4 real-book consensus / spread / abs(d)>=2.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 27 | steps-2-to-5 | step4 real-book consensus / spread / abs(d)>=3.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 28 | steps-2-to-5 | step4 real-book consensus / total / abs(d)>=0.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 29 | steps-2-to-5 | step4 real-book consensus / total / abs(d)>=1.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 30 | steps-2-to-5 | step4 real-book consensus / total / abs(d)>=1.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 31 | steps-2-to-5 | step4 real-book consensus / total / abs(d)>=2.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 32 | steps-2-to-5 | step4 real-book consensus / total / abs(d)>=2.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 33 | steps-2-to-5 | step4 real-book consensus / total / abs(d)>=3.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 34 | steps-2-to-5 | step4 real-book consensus / pooled / abs(d)>=0.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 35 | steps-2-to-5 | step4 real-book consensus / pooled / abs(d)>=1.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 36 | steps-2-to-5 | step4 real-book consensus / pooled / abs(d)>=1.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 37 | steps-2-to-5 | step4 real-book consensus / pooled / abs(d)>=2.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 38 | steps-2-to-5 | step4 real-book consensus / pooled / abs(d)>=2.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 39 | steps-2-to-5 | step4 real-book consensus / pooled / abs(d)>=3.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 40 | steps-2-to-5 | step4 kaunitz single most extreme / spread / abs(d)>=0.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 41 | steps-2-to-5 | step4 kaunitz single most extreme / spread / abs(d)>=1.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 42 | steps-2-to-5 | step4 kaunitz single most extreme / spread / abs(d)>=1.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 43 | steps-2-to-5 | step4 kaunitz single most extreme / spread / abs(d)>=2.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 44 | steps-2-to-5 | step4 kaunitz single most extreme / spread / abs(d)>=2.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 45 | steps-2-to-5 | step4 kaunitz single most extreme / spread / abs(d)>=3.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 46 | steps-2-to-5 | step4 kaunitz single most extreme / total / abs(d)>=0.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 47 | steps-2-to-5 | step4 kaunitz single most extreme / total / abs(d)>=1.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 48 | steps-2-to-5 | step4 kaunitz single most extreme / total / abs(d)>=1.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 49 | steps-2-to-5 | step4 kaunitz single most extreme / total / abs(d)>=2.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 50 | steps-2-to-5 | step4 kaunitz single most extreme / total / abs(d)>=2.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 51 | steps-2-to-5 | step4 kaunitz single most extreme / total / abs(d)>=3.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 52 | steps-2-to-5 | step4 kaunitz single most extreme / pooled / abs(d)>=0.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 53 | steps-2-to-5 | step4 kaunitz single most extreme / pooled / abs(d)>=1.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 54 | steps-2-to-5 | step4 kaunitz single most extreme / pooled / abs(d)>=1.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 55 | steps-2-to-5 | step4 kaunitz single most extreme / pooled / abs(d)>=2.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 56 | steps-2-to-5 | step4 kaunitz single most extreme / pooled / abs(d)>=2.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 57 | steps-2-to-5 | step4 kaunitz single most extreme / pooled / abs(d)>=3.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 58 | steps-2-to-5 | step4 true one-sided / spread / abs(d)>=0.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 59 | steps-2-to-5 | step4 true one-sided / spread / abs(d)>=1.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 60 | steps-2-to-5 | step4 true one-sided / spread / abs(d)>=1.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 61 | steps-2-to-5 | step4 true one-sided / spread / abs(d)>=2.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 62 | steps-2-to-5 | step4 true one-sided / spread / abs(d)>=2.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 63 | steps-2-to-5 | step4 true one-sided / spread / abs(d)>=3.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 64 | steps-2-to-5 | step4 true one-sided / total / abs(d)>=0.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 65 | steps-2-to-5 | step4 true one-sided / total / abs(d)>=1.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 66 | steps-2-to-5 | step4 true one-sided / total / abs(d)>=1.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 67 | steps-2-to-5 | step4 true one-sided / total / abs(d)>=2.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 68 | steps-2-to-5 | step4 true one-sided / total / abs(d)>=2.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 69 | steps-2-to-5 | step4 true one-sided / total / abs(d)>=3.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 70 | steps-2-to-5 | step4 true one-sided / pooled / abs(d)>=0.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 71 | steps-2-to-5 | step4 true one-sided / pooled / abs(d)>=1.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 72 | steps-2-to-5 | step4 true one-sided / pooled / abs(d)>=1.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 73 | steps-2-to-5 | step4 true one-sided / pooled / abs(d)>=2.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 74 | steps-2-to-5 | step4 true one-sided / pooled / abs(d)>=2.5 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 75 | steps-2-to-5 | step4 true one-sided / pooled / abs(d)>=3.0 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell — see docs, not a transcript) |
+| 76 | ratings-residual | walk-forward ratings disagreement predicts residual — all games | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; slope -0.0196, CI [-0.0869, +0.0478], detects 0.096 |
+| 77 | ratings-residual | walk-forward ratings disagreement predicts residual — early season weeks 1-4 | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge, barely powered; slope -0.0971, detects 0.143 |
+| 78 | ratings-residual | walk-forward ratings disagreement predicts residual — late season weeks 5+ | 2021, 2022, 2023, 2024, 2025 | 2026-09-03 | no demonstrated edge; slope +0.0204, CI [-0.0625, +0.1033], detects 0.118 |
 
 The correction is Bonferroni on the cumulative count — conservative on purpose. Holm and Benjamini-Hochberg need every p-value in hand at once, and this lab's tests arrive one week at a time over a season. A correction that can be computed incrementally and is slightly too wide beats one that is exactly right and cannot be computed until the season is over.
 

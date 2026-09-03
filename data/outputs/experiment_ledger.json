@@ -272,6 +272,747 @@
         2025
       ],
       "outcome": "spread-conditioning is the fix; the shape itself is not demonstrated"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / spread / abs(d)>=0.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / spread / abs(d)>=1.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / spread / abs(d)>=1.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / spread / abs(d)>=2.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / spread / abs(d)>=2.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / spread / abs(d)>=3.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / total / abs(d)>=0.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / total / abs(d)>=1.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / total / abs(d)>=1.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / total / abs(d)>=2.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / total / abs(d)>=2.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / total / abs(d)>=3.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / pooled / abs(d)>=0.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / pooled / abs(d)>=1.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / pooled / abs(d)>=1.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / pooled / abs(d)>=2.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / pooled / abs(d)>=2.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 real-book consensus / pooled / abs(d)>=3.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / spread / abs(d)>=0.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / spread / abs(d)>=1.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / spread / abs(d)>=1.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / spread / abs(d)>=2.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / spread / abs(d)>=2.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / spread / abs(d)>=3.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / total / abs(d)>=0.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / total / abs(d)>=1.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / total / abs(d)>=1.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / total / abs(d)>=2.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / total / abs(d)>=2.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / total / abs(d)>=3.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / pooled / abs(d)>=0.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / pooled / abs(d)>=1.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / pooled / abs(d)>=1.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / pooled / abs(d)>=2.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / pooled / abs(d)>=2.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 kaunitz single most extreme / pooled / abs(d)>=3.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / spread / abs(d)>=0.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / spread / abs(d)>=1.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / spread / abs(d)>=1.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / spread / abs(d)>=2.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / spread / abs(d)>=2.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / spread / abs(d)>=3.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / total / abs(d)>=0.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / total / abs(d)>=1.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / total / abs(d)>=1.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / total / abs(d)>=2.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / total / abs(d)>=2.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / total / abs(d)>=3.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / pooled / abs(d)>=0.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / pooled / abs(d)>=1.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / pooled / abs(d)>=1.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / pooled / abs(d)>=2.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / pooled / abs(d)>=2.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "steps-2-to-5",
+      "name": "step4 true one-sided / pooled / abs(d)>=3.0",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; every cell inside its detectable floor (reconstructed grid cell \u2014 see docs, not a transcript)"
+    },
+    {
+      "search": "ratings-residual",
+      "name": "walk-forward ratings disagreement predicts residual \u2014 all games",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; slope -0.0196, CI [-0.0869, +0.0478], detects 0.096"
+    },
+    {
+      "search": "ratings-residual",
+      "name": "walk-forward ratings disagreement predicts residual \u2014 early season weeks 1-4",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge, barely powered; slope -0.0971, detects 0.143"
+    },
+    {
+      "search": "ratings-residual",
+      "name": "walk-forward ratings disagreement predicts residual \u2014 late season weeks 5+",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; slope +0.0204, CI [-0.0625, +0.1033], detects 0.118"
     }
   ]
 }

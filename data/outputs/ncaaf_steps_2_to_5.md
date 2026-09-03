@@ -39,7 +39,7 @@ The ledger stood at **4 hypotheses (x1.27)** before these steps. Spend:
 | Step 2 — book-implied margin dispersion | 4 | 8 | x1.395 | x1.395 |
 | Step 3 — line movement as detector | 4 | 12 | x1.462 | x1.40 |
 | Step 4 — book vs consensus | 54 | 66 | x1.718 | x1.70 (counted 58: prior + own, omitting Steps 2-3) |
-| Step 5 | not reported | — | — | — |
+| Step 5 — ratings as a residual | 3 | 69 | x1.723 | x1.742 (ledger backfilled to 78; conservative) |
 
 **New cumulative count: 66 known hypotheses. New correction factor: x1.718** (Bonferroni,
 z = 3.3678 vs 1.9600). 66 is a floor, not a count, until Step 5's spend is recorded.
@@ -50,7 +50,7 @@ correction flips a verdict — every affected result was already a null or alrea
 but every positive-looking cell in Step 4 is fractionally wider than printed, never narrower.
 
 The on-disk ledger at `/Users/cooperross/Projects/ncaaf-betting-lab/data/outputs/experiment_ledger.json`
-still reads 4 / x1.27 and is stale by 62 hypotheses.
+read 4 / x1.27 and was stale by 62 hypotheses; it has since been backfilled to 78 / x1.742.
 
 ---
 
@@ -280,11 +280,48 @@ it bought nothing.
 
 ---
 
-## Step 5 — not reported
+## Step 5 — do this lab's own ratings add anything on top of the market?
 
-No Step 5 results reached this write-up. There is no verdict here, null or otherwise, and no floor.
-Treat Step 5 as **unrun for reporting purposes** until its results and its hypothesis spend are
-recorded; the ledger total of 66 excludes it.
+**Verdict: no demonstrated edge, and over the full sample the corrected interval also rules out a
+slope that would pay. Ratings do not re-enter the architecture. The late-season split does not
+support that second claim and is left open.**
+
+Ratings fitted walk-forward (least squares on margin against team indicators plus a home-field term,
+on games strictly earlier than the week being priced; ridge 3.0, home field +2.78 pts), then the only
+question that matters: does the rating's disagreement with the closing spread predict the residual,
+actual margin minus implied margin? Clustered by week. Full detail in
+`data/outputs/ratings_residual.md`.
+
+| Split | Games | Slope | 95% interval (x1.742) | Detects | Rules out a paying slope? |
+|:---|---:|---:|:---|---:|:---|
+| all games | 3,124 | -0.0196 | [-0.1369, +0.0978] | 0.146 | yes - interval sits below 0.143 |
+| early season (weeks 1-4) | 941 | -0.0971 | [-0.2713, +0.0770] | 0.217 | yes |
+| late season (weeks 5+) | 2,183 | +0.0204 | [-0.1239, +0.1647] | 0.180 | **no** |
+
+The ratings disagree with the close by a standard deviation of **8.19 points** and none of it
+predicts what the price got wrong. Profitability would need a slope of **0.143**: bet the top decile
+of disagreement (10.5 points) and a -110 price needs roughly 1.5 points of true edge to clear the vig.
+
+**A correction to my own first write-up of this step.** I initially reported the design as comfortably
+powered - detecting 0.096 against a 0.143 threshold - and called the null "worth having". That
+computed power at the nominal critical value of 1.96 while quoting intervals at the lab's corrected
+3.41. At the honest correction the detectable slope is **0.146, above the 0.143 that would pay**, so
+the 80% power criterion narrowly fails. What survives is the realized interval, which for the full
+sample sits entirely below 0.143 - a stronger and more direct statement than a power calculation, and
+the one the decision rests on. The design had no margin to spare.
+
+**Hypotheses spent: 3.**
+
+### Hypothesis spend, restated
+
+The on-disk ledger read **21** because Step 4's 54-cell sweep was logged as four named families
+rather than as cells. It has been backfilled - Step 4's grid reconstructed as six thresholds x three
+markets x three variants = 54, matching the reported spend, and labelled a reconstruction rather than
+a transcript in every entry - and Step 5's three splits recorded.
+
+**The ledger now stands at 78 hypotheses, correction factor x1.742** (critical value 3.4136). It is
+no longer stale, and `ratings_residual.py` reads the factor from it rather than pinning a constant,
+so future spend tightens this conclusion automatically instead of leaving a stale number behind.
 
 ---
 
