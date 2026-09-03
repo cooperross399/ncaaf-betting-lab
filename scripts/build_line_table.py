@@ -101,11 +101,30 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 2
 
+    # THE SPREAD FEED CARRIES ONE ROW PER SIDE. Each book writes the game
+    # twice — the home handicap and the away handicap, distinguished by `abbr`,
+    # the team the number belongs to. Taking a median across both sides
+    # collapses every spread to approximately ZERO, and it does it silently:
+    # the table looks complete, every game has a number, and the number is a
+    # pick'em. The first version of this script did exactly that, and the
+    # market-anchored validation downstream was anchored to nothing.
+    #
+    # Totals carry one row per side too (over and under), but both sides quote
+    # the same number, so the median is correct there and only the spread needs
+    # this.
+    lines["abbr"] = lines["abbr"].astype(str).str.strip()
     rows = []
     for (game_id, market), group in lines.groupby(["game_id", "market_type"]):
         game = games.get(game_id)
         if game is None:
             continue
+        if market == "spread":
+            group = group[group["abbr"] == game.home_team]
+            if group.empty:
+                # The home team's own row is what defines the handicap sign.
+                # Without it the sign is a guess, and a guessed sign is a
+                # backwards spread on every game it touches.
+                continue
         closing = pd.to_numeric(group["lines"], errors="coerce").dropna()
         opening = pd.to_numeric(group["opening_lines"], errors="coerce").dropna()
         if closing.empty:
