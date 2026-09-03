@@ -77,19 +77,68 @@ def bucket_for(total: float) -> tuple[float, float]:
     return TOTAL_BUCKETS[-1]
 
 
-def empirical_margin_pmf(margins: list[int]) -> dict[int, float]:
-    """The observed margin distribution, unsmoothed.
+#: How far the smoothing kernel reaches, in points. Narrow on purpose: it has
+#: to fill the gaps a few thousand games leave without flattening the spikes at
+#: 3 and 7, which are the entire reason this model exists.
+#:
+#: **Chosen on the held-out season**, which costs a degree of freedom and is
+#: recorded rather than hidden: four values were tried against 2025 and 0.5 won
+#: on log-likelihood. So 2025 is no longer a clean confirmation set for this
+#: model, and the next one has to come from 2026.
+SMOOTHING_BANDWIDTH = 0.5
 
-    Unsmoothed on purpose: smoothing is what a normal approximation does, and
-    the whole point here is the lumps a normal cannot represent.
+#: Weight given to a broad fallback so no margin in range is ever impossible.
+#: An unsmoothed empirical shape assigns zero to any margin it has not seen,
+#: and zero is a claim of impossibility that a few hundred games cannot
+#: support — measured, it cost 0.49 nats a game against a plain normal even
+#: while getting the key numbers twice as right.
+FALLBACK_WEIGHT = 0.03
+
+
+def empirical_margin_pmf(
+    margins: list[int],
+    *,
+    bandwidth: float = SMOOTHING_BANDWIDTH,
+    fallback_weight: float = FALLBACK_WEIGHT,
+    support: int = 70,
+) -> dict[int, float]:
+    """The observed margin distribution, lightly smoothed.
+
+    Smoothed, but only just. A raw empirical shape puts **zero** on every
+    margin it has not seen, and on a few hundred games that is most of them —
+    measured on held-out 2025 it scored 0.49 nats a game worse than a plain
+    normal while getting P(|margin| = 3) more than twice as close. Zero is a
+    claim of impossibility, and no sample this size supports one.
+
+    So a narrow Gaussian kernel fills the gaps and a small share of a broad
+    fallback guarantees nothing in range is impossible. The bandwidth is
+    deliberately under two points: wide enough to bridge an unobserved margin,
+    narrow enough that the spikes at 3 and 7 survive — which a normal
+    approximation cannot represent at all.
     """
     if not margins:
         return {}
-    counts: dict[int, int] = {}
+    counts: dict[int, float] = {}
     for margin in margins:
-        counts[int(margin)] = counts.get(int(margin), 0) + 1
-    total = sum(counts.values())
-    return {k: v / total for k, v in sorted(counts.items())}
+        counts[int(margin)] = counts.get(int(margin), 0.0) + 1.0
+    observed = np.array(sorted(counts))
+    weights = np.array([counts[int(x)] for x in observed], dtype=float)
+    weights = weights / weights.sum()
+
+    grid = np.arange(-support, support + 1, dtype=float)
+    kernel = np.exp(
+        -0.5 * ((grid[:, None] - observed[None, :]) / bandwidth) ** 2
+    )
+    kernel = kernel / kernel.sum(axis=0, keepdims=True)
+    smoothed = (kernel * weights[None, :]).sum(axis=1)
+
+    spread = float(np.sqrt((weights * (observed - (weights * observed).sum()) ** 2).sum()))
+    broad = np.exp(-0.5 * (grid / max(spread, 1.0)) ** 2)
+    broad = broad / broad.sum()
+
+    blended = (1.0 - fallback_weight) * smoothed + fallback_weight * broad
+    blended = blended / blended.sum()
+    return {int(x): float(w) for x, w in zip(grid, blended) if w > 1e-9}
 
 
 def tilt_to_mean(

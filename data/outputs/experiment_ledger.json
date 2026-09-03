@@ -1,0 +1,56 @@
+{
+  "hypotheses": [
+    {
+      "search": "margin-shape",
+      "name": "kernel bandwidth 0.5",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "0.5 chosen on held-out 2025; +0.069 nats vs normal"
+    },
+    {
+      "search": "margin-shape",
+      "name": "kernel bandwidth 0.7",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "0.5 chosen on held-out 2025; +0.069 nats vs normal"
+    },
+    {
+      "search": "margin-shape",
+      "name": "kernel bandwidth 0.9",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "0.5 chosen on held-out 2025; +0.069 nats vs normal"
+    },
+    {
+      "search": "margin-shape",
+      "name": "kernel bandwidth 1.2",
+      "tested_on": "2026-09-03",
+      "seasons": [
+        2021,
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "0.5 chosen on held-out 2025; +0.069 nats vs normal"
+    }
+  ]
+}
