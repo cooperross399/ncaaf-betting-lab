@@ -1,0 +1,277 @@
+# Ledger Guard — the append-only rule, checked at the diff instead of at runtime.
+#
+# `ExperimentLedger.save()` in src/ncaaf_betting_lab/experiment_ledger.py — cited
+# by symbol, because the line range that used to stand here had already drifted
+# past the end of the function — raises when a ledger would shrink, but it only
+# sees writes that go through the code. Editing
+# data/outputs/experiment_ledger.json in an editor, or dropping a failed
+# hypothesis in a PR diff, walks straight past it — and a PR diff is
+# exactly how a ledger reaches main. This workflow is that missing half: it
+# compares the ledger on the head against the ledger at the base and refuses any
+# run in which a recorded hypothesis was removed or rewritten. The tracked ledger
+# holds 78 hypotheses and hands back a x1.742 widening on every new 95% interval;
+# lose entries quietly and the lab reports a correction smaller than the truth,
+# which is the failure the rule names.
+#
+# This workflow READS and never writes. It holds `contents: read`, so it cannot
+# commit, push, or "repair" a ledger — a guard that can rewrite the evidence has
+# failure modes that include rewriting the evidence. It accesses the `secrets`
+# context nowhere, because it needs nothing from it and a credential in scope is
+# a credential that can leak. That is not left to review: tests/test_workflows.py
+# reads this file's raw text, comments included, and fails on the context being
+# accessed in ANY spelling — dot, bracket, paren, any casing — so the guarantee
+# is "no secret is reachable from here", not "one punctuation mark is absent".
+#
+# A base ref it cannot resolve is a HARD STOP, not a pass. "There was no prior
+# ledger" and "I could not read the prior ledger" must never take the same
+# branch: the first is an honest first commit, the second is a broken guard, and
+# a broken guard reporting green is worse than no guard at all.
+#
+# It is a separate workflow rather than a job inside tests.yml so its red tick
+# carries its own name in the PR. Two different alarms wearing one label is worse
+# than one alarm.
+
+name: Ledger Guard
+
+on:
+  # Unfiltered on purpose, and now actually unfiltered — this said so above a
+  # `branches: [main]` push filter, which is the kind of disagreement that gets
+  # settled by believing the comment. No `paths:` filter: a path-filtered
+  # required check hangs pending forever, and the render can break from a
+  # change that never touches data/outputs/. No `branches:` filter either, for
+  # the reason tests.yml refuses the same hole: a ledger edited on a side branch
+  # reaches main through a merge, and a guard that only ever looked at main
+  # first sees the edit after it has landed. The ledger is checked BEFORE the
+  # merge — a gate that fires post-merge is a notification.
+  #
+  # The cost, stated rather than discovered: the FIRST push of a new branch
+  # carries an all-zeros `github.event.before`, which the resolve step below
+  # treats as a hard stop. That run is red. It is red because nothing was
+  # compared, which is the honest report; the branch's PR run compares it
+  # properly against the base.
+  pull_request:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ledger-guard-${{ github.ref }}
+  # PULL REQUEST RUNS ONLY. A PR run compares the whole head against the PR's
+  # base, so a superseded one is re-done in full by the run that replaced it
+  # and nothing is lost by cancelling it.
+  #
+  # A PUSH RUN IS NEVER CANCELLED. It compares exactly one range,
+  # github.event.before -> head, and the superseding run's `before` is the
+  # cancelled run's `after`. Cancel it and that range is never compared by
+  # anything, ever — which is how a removed hypothesis gets pushed and then
+  # buried under a second push, with two green ticks over the hole. `true` here
+  # applied to both event types and threw away the evidence in the push case.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  append_only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out the full history
+        uses: actions/checkout@v4
+        with:
+          # The comparison reads a blob out of the base commit. A shallow clone
+          # makes the base unreadable, which the resolve step below turns into a
+          # red build rather than a silent pass — but the cheaper fix is to have
+          # the history in the first place.
+          fetch-depth: 0
+          # Nothing here pushes. Leaving a token in .git/config for later steps
+          # is handing write access to a job that must not have it.
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          # pyproject declares >=3.12, an open upper bound; 3.13+ has never been
+          # exercised here, so pin rather than drift.
+          python-version: '3.12'
+
+      - name: Install dependencies
+        # No cache: requirements.txt carries floors and no lockfile, so a cached
+        # wheel set would hide the resolution the run actually used.
+        run: python -m pip install -r requirements.txt
+
+      - name: Resolve the base commit, or stop
+        id: base
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          case "${EVENT_NAME}" in
+            pull_request) BASE="${PR_BASE_SHA}" ;;
+            push)         BASE="${PUSH_BEFORE_SHA}" ;;
+            workflow_dispatch) BASE="origin/main" ;;
+            *)
+              echo "::error::Unhandled event ${EVENT_NAME}. The append-only check did not run. This is a broken guard, NOT evidence that the ledger is intact."
+              exit 1
+              ;;
+          esac
+          if [ -z "${BASE}" ]; then
+            echo "::error::No base ref for event ${EVENT_NAME}. The append-only check did not run. This is a broken guard, NOT evidence that the ledger is intact."
+            exit 1
+          fi
+          # An all-zeros `before` (first push of a branch), a force-pushed-away
+          # sha, or a shallow clone all land here. Every one of them means the
+          # comparison cannot be made — which is a failure, never a pass.
+          if ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
+            echo "::error::Cannot resolve the base commit ${BASE}. The append-only check did not run. This is a broken guard, NOT evidence that the ledger is intact."
+            exit 1
+          fi
+          echo "sha=${BASE}" >> "$GITHUB_OUTPUT"
+          echo "Base commit: ${BASE}"
+
+      - name: Extract the ledger as it stands at the base
+        id: extract
+        env:
+          BASE: ${{ steps.base.outputs.sha }}
+        run: |
+          set -euo pipefail
+          # The base tree must be readable at all. If this fails the checkout is
+          # broken, which is a different thing from "the ledger was not there".
+          if ! git ls-tree "${BASE}" -- data/outputs/ >/dev/null; then
+            echo "::error::Cannot read the base tree at ${BASE}. The append-only check did not run. This is a broken guard, NOT evidence that the ledger is intact."
+            exit 1
+          fi
+          if git cat-file -e "${BASE}:data/outputs/experiment_ledger.json" 2>/dev/null; then
+            # Temp-then-move. `git show REF:file > file` creates the target even
+            # when it fails, and a zero-byte ledger parses as zero hypotheses —
+            # which reads as a clean comparison against nothing.
+            TMP="$(mktemp)"
+            git show "${BASE}:data/outputs/experiment_ledger.json" > "${TMP}"
+            if [ -s "${TMP}" ]; then
+              mv "${TMP}" "${RUNNER_TEMP}/base_ledger.json"
+            else
+              rm -f "${TMP}"
+              echo "::error::The base ledger exists but came back empty."
+              exit 1
+            fi
+            echo "base_present=true" >> "$GITHUB_OUTPUT"
+            echo "Base ledger extracted from ${BASE}."
+          else
+            # Absent, not broken: the path did not exist at the base. That is an
+            # honest first-commit state and it takes its own branch, with its own
+            # message, and its own flag into the check below.
+            echo "base_present=false" >> "$GITHUB_OUTPUT"
+            echo "No ledger at the base commit ${BASE}. First-commit state."
+          fi
+
+      - name: Refuse a removed or rewritten hypothesis
+        env:
+          BASE_PRESENT: ${{ steps.extract.outputs.base_present }}
+        # The comparison lives in a Python script with unit tests, not in shell,
+        # jq, grep, or a heredoc, so the merge-key and outcome-equality logic can
+        # be exercised without pushing a PR. Its contract:
+        #   - the head file must exist, parse, carry a `hypotheses` list, and
+        #     every entry must have all five fields (search, name, tested_on,
+        #     seasons, outcome) with the right types — malformed is a failure,
+        #     never a skip;
+        #   - len(head) >= len(base);
+        #   - every base entry, keyed on (search, name, tuple(seasons)), is still
+        #     in head with a byte-identical `outcome` and `tested_on`. A count
+        #     check alone passes an edit that swaps a failed hypothesis for a new
+        #     one, which keeps the count and destroys the correction;
+        #   - it prints the resulting count beside its correction factor, so the
+        #     number is in the log next to its sample size;
+        #   - it exits 1 naming what was removed or rewritten, and exits 1 if the
+        #     base was present but never actually read.
+        # There is no allowlist, no --force, and no env-var waiver, because a
+        # gate with a waiver is a gate that will be waived.
+        run: |
+          set -euo pipefail
+          # A required companion that has gone missing is a red build, not a
+          # skipped step: without it nothing compared anything.
+          if [ ! -f scripts/check_ledger_append_only.py ]; then
+            echo "::error::scripts/check_ledger_append_only.py is missing. The append-only check did not run. This is a broken guard, NOT evidence that the ledger is intact."
+            exit 1
+          fi
+          if [ "${BASE_PRESENT}" = "true" ]; then
+            python scripts/check_ledger_append_only.py \
+              --base "${RUNNER_TEMP}/base_ledger.json" \
+              --head data/outputs/experiment_ledger.json \
+              | tee "${RUNNER_TEMP}/ledger_check.txt"
+          else
+            python scripts/check_ledger_append_only.py \
+              --base-absent \
+              --head data/outputs/experiment_ledger.json \
+              | tee "${RUNNER_TEMP}/ledger_check.txt"
+          fi
+
+      - name: Re-render the ledger from source and demand no diff
+        # Three checks in one command. Running the recorder exercises the runtime
+        # shrink guard in save() against CI's copy of the ledger; the diff proves
+        # the tracked .md is the render of the tracked .json rather than a
+        # hand-edited artefact; and it proves the render still reproduces. The
+        # script is byte-stable on a clean clone today — it prints "78 distinct
+        # hypotheses (+0). Any new 95% interval widens by x1.74." and leaves
+        # `git status --porcelain` empty.
+        #
+        # PYTHONPATH=src is required: pyproject's `pythonpath` key applies to
+        # pytest only, and without it the script dies with ModuleNotFoundError.
+        #
+        # `--exit-code` is the gate. Nothing follows it — no `|| true`.
+        #
+        # BUT `git diff` IS BLIND TO AN UNTRACKED FILE, and that blindness is
+        # reachable: `git rm data/outputs/experiment_ledger.md && git commit`,
+        # then the unconditional write_text at the end of
+        # record_experiments.py main() recreates the render regardless. (This
+        # cited a line number, and the line number was wrong the day it was
+        # written — it pointed at the print() that follows the call. Cite the
+        # call.) It comes back UNTRACKED, the diff has nothing
+        # tracked to compare, and the step exits 0 over a record that was
+        # deleted. So tracked-ness is asserted BEFORE the render runs, while
+        # the deletion is still visible, and the clean-tree check tests.yml
+        # already uses catches the other half — anything the render leaves
+        # behind that git is not watching.
+        run: |
+          set -euo pipefail
+          git ls-files --error-unmatch -- data/outputs/experiment_ledger.json data/outputs/experiment_ledger.md >/dev/null || { echo '::error::A tracked ledger file was deleted. The ledger is append-only; removing the render removes the record.'; exit 1; }
+          PYTHONPATH=src python scripts/record_experiments.py
+          git diff --exit-code -- data/outputs/experiment_ledger.json data/outputs/experiment_ledger.md
+          test -z "$(git status --porcelain -- data/outputs/)" || { git status --porcelain -- data/outputs/; echo '::error::The ledger render left untracked output.'; exit 1; }
+
+      - name: Summarise
+        env:
+          BASE: ${{ steps.base.outputs.sha }}
+          BASE_PRESENT: ${{ steps.extract.outputs.base_present }}
+        run: |
+          set -euo pipefail
+          # The check script's first line is the count and the correction factor.
+          # The count is the sample size the factor is derived from, so the two
+          # travel together here as they do everywhere else in this lab — which
+          # is only true if that line actually arrived. Read it into a variable
+          # FIRST: `echo "$(head -n 1 missing)"` exits 0 under `set -euo
+          # pipefail`, because echo succeeds and the substitution's status is
+          # discarded, so the step would have written a summary with no number
+          # in it and gone green. Run, not reasoned about. Unreachable today —
+          # the step has no `if:`, so the tee above it must have succeeded — but
+          # a swallow that is only unreachable is one step insertion from being
+          # reachable, and both branches below end in a failing exit.
+          SUMMARY_LINE="$(head -n 1 "${RUNNER_TEMP}/ledger_check.txt")"
+          [ -n "${SUMMARY_LINE}" ] || { echo '::error::The append-only check left no output to summarise. Nothing was compared, and a summary without the count is not a report.'; exit 1; }
+          echo "Ledger Guard: ${SUMMARY_LINE} — base ${BASE} (ledger present at base: ${BASE_PRESENT})" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the ledgers that were compared
+        # `always()` because a failed run is the run whose inputs someone needs
+        # to read. `if-no-files-found: error` because an empty artifact would let
+        # "nothing was compared" masquerade as a completed check.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ledger-check
+          path: |
+            ${{ runner.temp }}/base_ledger.json
+            ${{ runner.temp }}/ledger_check.txt
+            data/outputs/experiment_ledger.json
+            data/outputs/experiment_ledger.md
+          if-no-files-found: error

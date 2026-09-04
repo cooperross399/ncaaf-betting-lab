@@ -1,0 +1,349 @@
+# Tests — the merge gate.
+#
+# This is the only workflow that runs the suite where every currently-testable
+# hard rule actually lives: no committed secret, no sibling-lab import, no
+# league literal outside the registry, an absence is never a pass, a sample size
+# beside every number.
+#
+# THIS JOB IS GIVEN NO CREDENTIAL, DELIBERATELY. Nothing here reads the
+# NCAAF_ODDS_API_KEY secret, and nothing binds FOOTBALL_ODDS_API_KEY into an
+# `env:`. The suite must pass without one. That is what proves no test quietly
+# depends on a live provider, and it is what makes a fork PR safe to run. The
+# claim is checked rather than trusted, in two places: inside the suite step's
+# own shell, and again in a standalone step for the job- and workflow-level
+# case. Do not add a secret here to "fix" a failure — a test that needs a
+# credential is the bug.
+#
+# The name of that secret is written here in prose and never as an expression.
+# tests/test_workflows.py reads these files' RAW TEXT, comments included, and
+# fails the build if the `secrets` context is ACCESSED anywhere in them. The
+# guarantee is about the accessor, not about one spelling of it: the dot form,
+# the bracket form, the paren form and any casing of the word are the same
+# finding, because a rule that knows one punctuation mark is defeated by typing
+# a different one. Raw text and not the parse, because a commented-out
+# credential is one uncomment away from being a live one.
+#
+# `python -m pytest -q` ALONE IS NOT THE GATE. Green must mean "the suite
+# passed", not "the suite did not object". pytest exits 0 on a skipped test and
+# on an xfail. A run that collected nothing exits 5 and the step shell catches
+# that one — the gate below covers a different case, because it runs under
+# `if: always()` and so also fires when junit.xml is absent, truncated, or stale
+# from an earlier step. Every exit code named here was run rather than recalled,
+# and a zero-collection run also writes a junit file with no testcases in it, so
+# the gate catches that case a second time. The suite has NO skips today — both
+# of the old ones (CLAUDE.md unwritten; no provider event ids cached) are
+# resolved — so the gate below is not waiting on a backlog: it is
+# what keeps a FUTURE skip from being green. A skip here is a gate that passes
+# when it should fail, which the lab rules put below having no gate. The step
+# named "Fail on a skip, an xfail, a missing guard module, or an empty run" is
+# what enforces that, and it is a tested script rather than shell, because a
+# gate that can drop a case deserves a test of its own. Cited by name and not by
+# position: steps get inserted, and a comment that counts them decays silently.
+#
+# pyproject.toml sets `xfail_strict = true` under [tool.pytest.ini_options], and
+# that flag is load-bearing HERE — but it sets the DEFAULT, and a marker
+# overrides the default. So state the gate's reach as a spelling and not as a
+# class of test: it fails on xfail > 0, and on any xpass reaching the XML as a
+# <failure> — which is every xpass EXCEPT one whose marker writes strict=False.
+# THAT one is written as a bare <testcase/> with no child element,
+# indistinguishable from a pass to any reader of the file, the gate included.
+# Run end to end rather than diffed: a suite whose only oddity is a passing
+# xfail(strict=False) test makes pytest print an xpass and exit 0, and makes
+# this gate exit 0 reporting zero xfails.
+#
+# TWO MORE WAYS PAST THIS GATE, FOUND BY ATTACKING IT AND DISCLOSED RATHER THAN
+# IMPLIED SHUT. Neither is fixable from this file, and both were run:
+#   1. Delete `xfail_strict` from pyproject.toml, or set it false, and EVERY
+#      xpass goes invisible — not only the marked one. The exception above holds
+#      only while the flag is true, which is what makes the flag a dependency
+#      and not a preference. Do not remove it to quiet a run.
+#   2. Add `--runxfail` to the pytest invocation and the marker goes inert:
+#      pytest reports a plain pass, there is no xpass to write down, and both
+#      pytest and this gate exit 0. It is in NO banned-flag set in
+#      tests/test_workflows.py, because it narrows nothing — it disarms. A flag
+#      that disarms a gate is a different category from one that shortens a run,
+#      and this file cannot be the thing that says so.
+#
+# The suite makes no network call and spends no provider credit. The two
+# `urlopen` call sites in this repo are in src/ncaaf_betting_lab/data/cfbfastr.py
+# and scripts/build_line_table.py, and the functions holding them are called by
+# no test — cfbfastr IS imported by tests/test_cfbfastr.py, for its pure readers
+# only, so "the module is untested" would be the wrong claim and "the socket is
+# never opened" is the right one. No fetch or report script runs in this job.
+# No test count is written here, and no wall-clock figure either: both move
+# every time a guard gains a case, and a stale absolute is worse than no number.
+
+name: Tests
+
+# Unfiltered on purpose, both triggers. With `push: branches: [main]` a direct
+# commit to a side branch runs no CI at all, which is a hole three of the four
+# sibling labs carry. The cost is a duplicate run on PR branches and ~40s of
+# setup for a ~2s suite; that is the cheaper side of the trade. Stated here so
+# nobody tidies it into a branch filter.
+#
+# No `paths:` filter, ever. A path-filtered workflow configured as a required
+# status check stays pending forever rather than passing, and a change that
+# breaks a guard rarely touches the guard's own file.
+#
+# The key is quoted because bare `on` is a YAML 1.1 boolean: `yaml.safe_load`
+# turns it into the key `True`, and tests/test_workflows.py parses these files
+# with exactly that. GitHub reads `"on"` the same as `on`.
+"on": [push, pull_request, workflow_dispatch]
+
+# Read is all this job needs. Named explicitly rather than omitted: an omitted
+# block inherits the repository default, so silence must not be a route to
+# write access.
+permissions:
+  contents: read
+
+# A cancelled test run loses no evidence — unlike the append-only workflows in
+# the sibling labs, nothing here writes a ledger or a receipt. Superseding an
+# in-flight run on the same ref is therefore free and correct.
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # A REAL git checkout is required, not a source export. Tests in
+      # tests/test_no_secrets_committed.py shell out to `git ls-files -z` and
+      # `git check-ignore` — they read what is TRACKED, not what is on disk,
+      # which is how a staged secret is caught. Outside a work tree both
+      # commands exit 128 (run here, not recalled), and every call that passes
+      # `check=True` turns that into a CalledProcessError. Errors are failures,
+      # so this fails closed, which is correct — but it means the checkout must
+      # be genuine. How MANY tests that is stays unwritten: it is a measured
+      # absolute, and the header's rule against those is not limited to the
+      # suite total.
+      #
+      # fetch-depth 1 is enough: no test walks history. persist-credentials is
+      # false because no step in this job authenticates to git.
+      #
+      # Do NOT run this job in a container. If that ever changes, add
+      # `git config --global --add safe.directory "$GITHUB_WORKSPACE"` first, or
+      # git's dubious-ownership check returns 128 and takes the entire secrets
+      # guard down while the rest of the suite stays green.
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      # Quoted and exact. pyproject.toml declares `requires-python = ">=3.12"`,
+      # an open upper bound that has never been exercised — '3.x', '3' or
+      # 'latest' would silently move this lab onto an untested interpreter and
+      # attribute the resulting change in a measured number to nothing.
+      #
+      # No `cache:` key here. See the install step for why.
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # requirements.txt only. Do NOT `pip install -e .` and do NOT set
+      # PYTHONPATH: pyproject.toml sets `pythonpath = ["src"]` under
+      # [tool.pytest.ini_options], and installing nothing extra keeps that
+      # contract exercised on every run. Re-verified at b31f9d7 by building a
+      # venv from requirements.txt alone, with no `-e .` and PYTHONPATH unset,
+      # and running the suite in it: it collected exactly the same test ids as
+      # the dev venv, all passed, ZERO skipped. The property is what is asserted
+      # here, not a count.
+      #
+      # NO PIP CACHE AND NO RESTORED VENV, EVER. The second half of
+      # tests/test_no_sibling_lab_import.py asserts
+      # `importlib.util.find_spec("football_betting_lab") is None`, and the
+      # incident it was written about was a venv copied from the NFL lab. A
+      # cache key that could restore another repository's environment would
+      # disarm the one guard that exists because of that exact event.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      # requirements.txt is eight `>=` floors with no lockfile, so `pandas>=2.2`
+      # resolves today to a pandas 3.x major. This step pins NOTHING. It RECORDS
+      # what the numbers in data/outputs/ were produced against, so a
+      # measurement that moves can be attributed to a dependency release instead
+      # of argued about.
+      #
+      # `set -o pipefail` is the first line because GitHub's default shell is
+      # `bash -e {0}` — errexit but NOT pipefail — so a failing pip in a
+      # pipeline would report tee's status and be discarded.
+      - name: Record the resolved dependency versions
+        run: |
+          set -o pipefail
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          python -m pip freeze | tee "$RUNNER_TEMP/resolved-versions.txt" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      # Modules under src/ that NO test imports are what this step is for.
+      # Every module under reports/ is in that set, along with verdicts,
+      # markets, selection, staging_provider_policy, kickoff, team_names and
+      # experiment_ledger. config is NOT: tests/test_no_secrets_committed.py
+      # imports PROJECT_ROOT from it. No count precedes that list any more — a
+      # count stood here and disagreed with its own enumeration, which is the
+      # same decay as a stale test total and is refused for the same reason.
+      # A module can be syntactically broken and the whole suite still pass;
+      # the EPL lab had one broken that way for over a month.
+      #
+      # Two things in this repository read those files: this step, and
+      # tests/test_league_registry_is_the_only_place.py, which ast.parses every
+      # one of them hunting league literals and therefore raises on a syntax
+      # error too. Both catch a syntax error and nothing else. Neither is a
+      # substitute for the tests these modules still need.
+      #
+      # The existence check is the gate, not decoration. `compileall` prints
+      # "Can't list 'src'" and EXITS 0 when a path argument names nothing
+      # (verified on 3.12.13), so a rename or a bad checkout would turn this
+      # step into a green report about no files at all.
+      #
+      # -f forces recompilation. Without it compileall skips a source whose
+      # cached .pyc looks current, so a stale __pycache__ from an earlier step
+      # or a restored tree could mask a file that no longer parses.
+      #
+      # Writes only __pycache__/, which is gitignored, so it does not disturb
+      # the clean-tree check below (verified).
+      - name: Byte-compile every module, including the untested ones
+        run: |
+          set -euo pipefail
+          for d in src scripts; do
+            [ -d "$d" ] || { echo "::error::$d is missing — the byte-compile gate would have passed on nothing."; exit 1; }
+          done
+          python -m compileall -q -f src scripts
+
+      # The whole suite, every time. No -x, no --maxfail, no -k, no -m, no
+      # --ignore, no --deselect, no testpaths override: the junit file must
+      # account for every test, and a run that stops early cannot. -rs so the
+      # reason for each skip is in the log right next to the gate that fails on
+      # it — a skip whose reason is not printed is one nobody resolves.
+      #
+      # junit.xml goes to $RUNNER_TEMP and never into the workspace, so the
+      # clean-tree check below stays meaningful.
+      #
+      # THE CREDENTIAL ASSERTION LIVES IN THIS RUN BLOCK because a step-level
+      # `env:` is visible only to the step it is attached to. As a step of its
+      # own it inspected its own environment, saw both variables empty, and
+      # printed "No provider credential in scope" while the step beside it had
+      # just handed pytest a live key — an affirmatively false report about the
+      # exact placement its own header warns about. Sharing the shell with the
+      # command it vouches for is the whole point. The standalone step further
+      # down is kept as a second belt for the job- and workflow-level case.
+      - name: Run the suite
+        run: |
+          set -euo pipefail
+          if [ -n "${NCAAF_ODDS_API_KEY:-}" ] || [ -n "${FOOTBALL_ODDS_API_KEY:-}" ]; then
+            echo '::error::A provider credential is in scope for the step that runs the suite. This suite needs none, and its absence is the proof that no test depends on a live provider.'
+            exit 1
+          fi
+          python -m pytest -q -rs --junit-xml="$RUNNER_TEMP/junit.xml"
+
+      # THE SKIP GATE. This is the step that makes green mean "the suite
+      # passed".
+      #
+      # scripts/check_test_results.py is a REQUIRED COMPANION, and it exists.
+      # If it is ever DELETED or renamed this step fails, and that is the
+      # correct state — the gate's absence must be a red build, not a step that
+      # quietly does not run. That is why the call is bare: `python` on a
+      # missing path exits 2 (verified), so there is deliberately no
+      # file-existence test in front of it that could be softened into a skip.
+      #
+      # Contract: parse the XML with xml.etree; exit 1 and print the offending
+      # test ids and messages if ANY of — the file is absent or unparseable;
+      # skipped > 0; xfail > 0; any xpass reaching the XML as a <failure>, which
+      # is every xpass except one whose marker writes strict=False and which no
+      # reader of this XML can see at all; failures > 0; errors > 0; tests == 0;
+      # or any module in a hard-coded REQUIRED_MODULES manifest is absent from
+      # the classnames or contributed zero testcases. REQUIRED_MODULES must name
+      # at minimum tests/test_no_secrets_committed.py,
+      # tests/test_no_sibling_lab_import.py,
+      # tests/test_league_registry_is_the_only_place.py and
+      # tests/test_contract_strings.py, so that deleting or renaming a hard-rule
+      # guard is a red build rather than a smaller green one. Note pytest writes
+      # classnames dotted and without the suffix — `tests.test_contract_strings`
+      # — so the manifest's paths must be mapped, not compared raw (verified
+      # against a real junit.xml from this repo).
+      #
+      # It must expose NO allowlist, NO env var and NO CLI flag that tolerates a
+      # skip. It must import only the standard library and nothing from src/, so
+      # that it still runs and still reports when the package itself is broken.
+      #
+      # It is a script and not an inline heredoc or a grep over pytest's stdout,
+      # because a gate that can drop a case deserves a test, and shell embedded
+      # in YAML cannot have one.
+      #
+      # `always()` so a failing or erroring run is still accounted for rather
+      # than skipped past.
+      #
+      # MEASURED STATE, re-checked at b31f9d7: the suite passes with ZERO
+      # skips, zero xfails and zero xpasses. Both former skips — CLAUDE.md
+      # unwritten, no provider event ids cached — are resolved. So this step is
+      # GREEN, and any red it reports is a REAL REGRESSION, not a known backlog
+      # item somebody may wave through.
+      - name: Fail on a skip, an xfail, a missing guard module, or an empty run
+        if: always()
+        run: python scripts/check_test_results.py "$RUNNER_TEMP/junit.xml"
+
+      # A full run must leave `git status --porcelain` empty, which holds so
+      # long as every file-writing test writes under pytest's tmp_path. This
+      # step does not REPORT that property, it enforces it: a test that starts
+      # writing into data/outputs/ instead is how a committed measurement gets
+      # silently regenerated by CI and the diff reviewed by nobody. No dated
+      # "verified today" is recorded here, because an undated today goes stale
+      # without changing a character. The `||` branch ends in `exit 1` — the
+      # failure path, not a swallowed error, and executed with a stubbed `git
+      # status` to confirm it: empty output exits 0, one porcelain line exits 1.
+      #
+      # `always()` because a step without it is SKIPPED once any earlier step
+      # fails, and the run that most needs this check is the one where something
+      # else already went wrong. A tree dirtied by a failing run is still a tree
+      # dirtied by CI.
+      - name: Fail if the suite wrote into the working tree
+        if: always()
+        run: test -z "$(git status --porcelain)" || { git status --porcelain; echo '::error::The suite wrote into the working tree.'; exit 1; }
+
+      # Belt two. The copy folded into the suite step catches a step-level
+      # `env:`; this one catches a job- or workflow-level `env:`, and it still
+      # runs when the suite step never got far enough to check anything.
+      # Neither covers the other, so both stay.
+      #
+      # This compares against EMPTINESS and never against a value, and it names
+      # the two variables without ever expanding either into the log.
+      #
+      # NCAAF_ODDS_API_KEY is the GitHub secret's name; FOOTBALL_ODDS_API_KEY is
+      # the variable the provider code actually reads. Neither belongs in this
+      # job. If this fires, something added a credential to the test job — the
+      # fix is to remove it, never to relax this check.
+      #
+      # `always()` for the reason the check exists at all: the moment somebody
+      # reaches for a credential is the moment they are fighting a red suite,
+      # and without this the run that most needs the check is the one run that
+      # skips it.
+      - name: Assert this job ran with no provider credential
+        if: always()
+        run: |
+          if [ -n "${NCAAF_ODDS_API_KEY:-}" ] || [ -n "${FOOTBALL_ODDS_API_KEY:-}" ]; then
+            echo '::error::A provider credential is present in the test job environment. This suite needs none, and its absence is the proof that no test depends on a live provider.'
+            exit 1
+          fi
+          echo 'No provider credential in scope. The suite passed without one.'
+
+      # The junit file IS the evidence that the gate ran, so a missing file must
+      # be an error. `if-no-files-found: warn` is what let the CBB lab's
+      # 1.3M-credit purchase upload nothing and stay green.
+      #
+      # The paths use `${{ runner.temp }}` and not `$RUNNER_TEMP`: a `with:`
+      # block is not a shell, so the environment variable would be uploaded as a
+      # literal filename and then not found.
+      - name: Upload the test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            ${{ runner.temp }}/junit.xml
+            ${{ runner.temp }}/resolved-versions.txt
+          if-no-files-found: error

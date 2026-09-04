@@ -14,3 +14,10 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+# A non-strict xpass is routed through pytest's append_pass() and lands in
+# junit.xml as an ordinary <testcase/> with no child element — indistinguishable
+# from a pass to any reader of that file, including scripts/check_test_results.py,
+# which documents the hole honestly rather than pretending to close it. Under
+# xfail_strict an xpass becomes a <failure> the gate catches. Without this flag
+# "no xpass" is enforced only for xfails already marked strict.
+xfail_strict = true
