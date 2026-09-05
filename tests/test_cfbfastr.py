@@ -15,6 +15,7 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from ncaaf_betting_lab.data.cfbfastr import (
@@ -26,6 +27,7 @@ from ncaaf_betting_lab.data.cfbfastr import (
     rateable_games,
     schedule_path,
 )
+from ncaaf_betting_lab.config import PROCESSED_DIR
 from ncaaf_betting_lab.leagues import NCAAF
 
 
@@ -187,3 +189,109 @@ def test_involving_fbs_is_not_the_same_question_as_rateable() -> None:
 
     assert len(fbs_involving_games([game])) == 1
     assert rateable_games([game]) == []
+
+
+# --------------------------------------------------------------------------
+# The sign-collision defect in scripts/build_line_table.py.
+
+def _builder():
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import build_line_table
+
+    return build_line_table
+
+
+def test_an_inverted_book_row_is_found() -> None:
+    """The measured defect: one book quotes the home row backwards.
+
+    Game 401331447 (2021 wk14, Michigan at Iowa, neutral site, final 42-3):
+    Bovada quotes Iowa at -12.0 while teamrankings, consensus and William Hill
+    all quote it at +12.0. Michigan won by 39, so +12 is the honest sign.
+    """
+    build = _builder()
+    closing = pd.Series([-12.0, 12.0, 12.0, 12.0])
+    assert build.inverted_rows(closing) == [0]
+
+
+def test_an_honest_disagreement_is_not_an_inversion() -> None:
+    """Books differing by a point are not on opposite conventions, and a rule
+    that says they are would drop most of the feed."""
+    build = _builder()
+    assert build.inverted_rows(pd.Series([12.0, 12.5, 13.0, 11.5])) == []
+    assert build.inverted_rows(pd.Series([-6.5, -7.0, -6.0])) == []
+
+
+def test_a_pickem_is_never_called_an_inversion() -> None:
+    """Near zero, -0.5 and +0.5 are two books disagreeing about a coin flip,
+    not two conventions. Without this guard the rule fires on real games."""
+    build = _builder()
+    assert build.inverted_rows(pd.Series([-0.5, 0.5, 0.5])) == []
+
+
+def test_two_books_are_too_few_to_judge_a_sign() -> None:
+    """With one number either side, there is no majority to be wrong about."""
+    build = _builder()
+    assert build.inverted_rows(pd.Series([-12.0, 12.0])) == []
+
+
+def test_the_move_is_measured_inside_a_book() -> None:
+    """`close_consensus - open_consensus` was a difference between medians over
+    DIFFERENT book sets, since a book with no opener still votes on the close.
+    One inverted row then became a 22.5-point move. A move measured inside a
+    book cannot be a convention collision."""
+    build = _builder()
+    group = pd.DataFrame({"_close": [12.0, 12.0, 13.0], "_open": [10.5, 11.0, None]})
+    assert build.within_book_move(group) == pytest.approx(1.25)
+
+
+def test_a_move_no_book_can_evidence_is_missing_not_reconstructed() -> None:
+    """Where no book carries both halves, the move is NOT rebuilt from the two
+    consensuses. A price that cannot be read stays missing."""
+    build = _builder()
+    group = pd.DataFrame({"_close": [12.0, 12.0], "_open": [None, None]})
+    assert build.within_book_move(group) is None
+
+
+def test_the_two_rules_compose_on_the_shape_that_defeated_them() -> None:
+    """End to end on a synthetic feed carrying game 401331447's exact shape.
+
+    This replaces a test that read data/processed/line_table.csv. That file is
+    gitignored, so the test passed on a machine that had built the table and
+    raised FileNotFoundError anywhere else -- the same "runs on one machine"
+    defect this repository has now found four times, and it would have gone red
+    on CI's very first run.
+
+    The shape: four books quote the home row, one of them backwards, and the
+    backwards one is the ONLY book carrying an opener. Before the fix that game
+    reported a 22.5-point move. After it, the close is the honest +12.0 and the
+    opener is missing, because the only evidence for it could not be read.
+    """
+    build = _builder()
+    group = pd.DataFrame(
+        {
+            "_close": [-12.0, 12.0, 12.0, 12.0],
+            "_open": [-10.5, None, None, None],
+        }
+    )
+
+    backwards = build.inverted_rows(group["_close"])
+    assert backwards == [0], "the inverted book was not identified"
+
+    kept = group.drop(index=backwards)
+    assert float(kept["_close"].median()) == 12.0, "the honest sign did not survive"
+    assert kept["_open"].dropna().empty, "the only opener came from the dropped book"
+    assert build.within_book_move(kept) is None, (
+        "with no book quoting both halves the move must be missing, not "
+        "reconstructed from two consensuses taken over different book sets"
+    )
+
+
+def test_the_pre_fix_arithmetic_really_did_produce_the_artefact() -> None:
+    """The number the old code produced, so the regression is anchored to a
+    measurement rather than to a description of one. Median over four books
+    for the close, median over one for the open, and the difference is a
+    22.5-point move on a feed whose moves have a standard deviation near 2."""
+    close_consensus = pd.Series([-12.0, 12.0, 12.0, 12.0]).median()
+    open_consensus = pd.Series([-10.5]).median()
+    assert close_consensus - open_consensus == pytest.approx(22.5)
