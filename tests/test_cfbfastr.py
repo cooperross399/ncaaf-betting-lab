@@ -15,6 +15,7 @@ from __future__ import annotations
 import csv
 from pathlib import Path
 
+import pandas as pd
 import pytest
 
 from ncaaf_betting_lab.data.cfbfastr import (
@@ -26,6 +27,7 @@ from ncaaf_betting_lab.data.cfbfastr import (
     rateable_games,
     schedule_path,
 )
+from ncaaf_betting_lab.config import PROCESSED_DIR
 from ncaaf_betting_lab.leagues import NCAAF
 
 
@@ -187,3 +189,90 @@ def test_involving_fbs_is_not_the_same_question_as_rateable() -> None:
 
     assert len(fbs_involving_games([game])) == 1
     assert rateable_games([game]) == []
+
+
+# --------------------------------------------------------------------------
+# The sign-collision defect in scripts/build_line_table.py.
+
+def _builder():
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+    import build_line_table
+
+    return build_line_table
+
+
+def test_an_inverted_book_row_is_found() -> None:
+    """The measured defect: one book quotes the home row backwards.
+
+    Game 401331447 (2021 wk14, Michigan at Iowa, neutral site, final 42-3):
+    Bovada quotes Iowa at -12.0 while teamrankings, consensus and William Hill
+    all quote it at +12.0. Michigan won by 39, so +12 is the honest sign.
+    """
+    build = _builder()
+    closing = pd.Series([-12.0, 12.0, 12.0, 12.0])
+    assert build.inverted_rows(closing) == [0]
+
+
+def test_an_honest_disagreement_is_not_an_inversion() -> None:
+    """Books differing by a point are not on opposite conventions, and a rule
+    that says they are would drop most of the feed."""
+    build = _builder()
+    assert build.inverted_rows(pd.Series([12.0, 12.5, 13.0, 11.5])) == []
+    assert build.inverted_rows(pd.Series([-6.5, -7.0, -6.0])) == []
+
+
+def test_a_pickem_is_never_called_an_inversion() -> None:
+    """Near zero, -0.5 and +0.5 are two books disagreeing about a coin flip,
+    not two conventions. Without this guard the rule fires on real games."""
+    build = _builder()
+    assert build.inverted_rows(pd.Series([-0.5, 0.5, 0.5])) == []
+
+
+def test_two_books_are_too_few_to_judge_a_sign() -> None:
+    """With one number either side, there is no majority to be wrong about."""
+    build = _builder()
+    assert build.inverted_rows(pd.Series([-12.0, 12.0])) == []
+
+
+def test_the_move_is_measured_inside_a_book() -> None:
+    """`close_consensus - open_consensus` was a difference between medians over
+    DIFFERENT book sets, since a book with no opener still votes on the close.
+    One inverted row then became a 22.5-point move. A move measured inside a
+    book cannot be a convention collision."""
+    build = _builder()
+    group = pd.DataFrame({"_close": [12.0, 12.0, 13.0], "_open": [10.5, 11.0, None]})
+    assert build.within_book_move(group) == pytest.approx(1.25)
+
+
+def test_a_move_no_book_can_evidence_is_missing_not_reconstructed() -> None:
+    """Where no book carries both halves, the move is NOT rebuilt from the two
+    consensuses. A price that cannot be read stays missing."""
+    build = _builder()
+    group = pd.DataFrame({"_close": [12.0, 12.0], "_open": [None, None]})
+    assert build.within_book_move(group) is None
+
+
+def test_the_shipped_table_carries_no_sign_collision() -> None:
+    """The regression, against the real table rather than a fixture.
+
+    Before the fix the table held a 22.5-point move on 401331447 -- 10.6
+    standard deviations, and 1,721 of the 15,386 pts^2 the close-beats-open
+    control was built from. The game is still present; its opener is not,
+    because the only book quoting one quoted it backwards.
+    """
+    table = pd.read_csv(PROCESSED_DIR / "line_table.csv", dtype={"game_id": str})
+    spread = table[table["market"] == "spread"]
+    assert not spread.empty, "no spread rows; this test would pass vacuously"
+
+    collision = spread[spread["line_move"].abs() >= 20]
+    assert collision.empty, (
+        "a line move of 20+ points is a sign collision, not a market move: "
+        f"{collision[['game_id', 'open_consensus', 'close_consensus', 'line_move']].to_dict('records')}"
+    )
+
+    game = spread[spread["game_id"] == "401331447"]
+    assert len(game) == 1, "401331447 should still be in the table"
+    assert pd.isna(game.iloc[0]["open_consensus"]), (
+        "401331447's only opener came from the inverted book and must be missing"
+    )

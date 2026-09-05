@@ -60,6 +60,79 @@ def fetch_lines(league, raw_dir: Path, *, timeout: int = 120) -> Path:
     return target
 
 
+#: A book's spread is INVERTED when its number is about the negative of what
+#: every other book quotes for the same side. Two guards keep this from firing
+#: on an honest disagreement: the consensus must be far enough from pick'em
+#: that a sign is meaningful at all, and the candidate must be much closer to
+#: MINUS the others than to the others.
+INVERSION_TOLERANCE = 0.5
+INVERSION_SEPARATION = 1.0
+PICKEM_GUARD = 1.0
+MINIMUM_BOOKS_TO_JUDGE_A_SIGN = 3
+
+
+def inverted_rows(closing: "pd.Series") -> list:
+    """Index labels whose spread sits on the opposite convention to the rest.
+
+    THE DEFECT THIS EXISTS FOR, measured on the shipped feed. Game 401331447
+    (2021 wk14, Michigan at Iowa, neutral site, final Michigan 42 - Iowa 3):
+    Bovada quotes the Iowa row at -12.0 close / -10.5 open while teamrankings,
+    consensus and William Hill all quote it at +12.0. Michigan won by 39, so
+    +12 is the honest sign and Bovada's row is backwards.
+
+    That alone would be survivable -- the median of four ignores one outlier.
+    What was not survivable is that `close_consensus` was the median over all
+    four books and `open_consensus` was the median over the ONLY book carrying
+    an opener, which was the inverted one. The two consensuses landed on
+    opposite conventions and the game recorded a 22.5-point line move: 10.6
+    standard deviations of the move distribution, and 1,721 of the 15,386
+    pts^2 that the whole close-beats-open control was built from.
+
+    42 book-rows across 39 games are inverted in the 2021-2025 feed, and in 37
+    of those the inverted book is the only one quoting an opener.
+
+    The rows are DROPPED, never corrected. Flipping a sign to what it "should
+    have" been is fabricating a price, and a price that cannot be read stays
+    missing.
+    """
+    numbers = closing.dropna()
+    if len(numbers) < MINIMUM_BOOKS_TO_JUDGE_A_SIGN:
+        return []
+    if abs(float(numbers.median())) < PICKEM_GUARD:
+        # Near pick'em, -0.5 and +0.5 are not opposite conventions, they are
+        # two books disagreeing about a coin flip.
+        return []
+    bad = []
+    for label, value in numbers.items():
+        others = numbers.drop(label)
+        if others.empty:
+            continue
+        centre = float(others.median())
+        if abs(value + centre) <= INVERSION_TOLERANCE and abs(value - centre) > INVERSION_SEPARATION:
+            bad.append(label)
+    return bad
+
+
+def within_book_move(group: "pd.DataFrame") -> float | None:
+    """The median move among books that quote BOTH an open and a close.
+
+    `line_move` used to be `close_consensus - open_consensus`: a difference
+    between two medians taken over DIFFERENT SETS OF BOOKS, since a book with
+    no opener still votes on the close. That is a cross-book quantity wearing
+    the name of a within-book one, and it is what let one inverted row become
+    a 22.5-point "move".
+
+    A move measured inside a single book cannot be a convention collision,
+    because both halves come from the same quoting side. Where no book carries
+    both, the move is NOT reconstructed from the two consensuses -- it is
+    missing, and it stays missing.
+    """
+    both = group.dropna(subset=["_close", "_open"])
+    if both.empty:
+        return None
+    return float((both["_close"] - both["_open"]).median())
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--league", default=DEFAULT_LEAGUE_KEY)
@@ -125,8 +198,16 @@ def main(argv: list[str] | None = None) -> int:
                 # Without it the sign is a guess, and a guessed sign is a
                 # backwards spread on every game it touches.
                 continue
-        closing = pd.to_numeric(group["lines"], errors="coerce").dropna()
-        opening = pd.to_numeric(group["opening_lines"], errors="coerce").dropna()
+        group = group.assign(
+            _close=pd.to_numeric(group["lines"], errors="coerce"),
+            _open=pd.to_numeric(group["opening_lines"], errors="coerce"),
+        )
+        if market == "spread":
+            backwards = inverted_rows(group["_close"])
+            if backwards:
+                group = group.drop(index=backwards)
+        closing = group["_close"].dropna()
+        opening = group["_open"].dropna()
         if closing.empty:
             continue
         rows.append({
@@ -146,12 +227,13 @@ def main(argv: list[str] | None = None) -> int:
             "close_min": float(closing.min()),
             "close_max": float(closing.max()),
             "open_consensus": float(opening.median()) if not opening.empty else None,
+            # Measured inside a book, never across two. See within_book_move.
+            "line_move": within_book_move(group),
         })
     table = pd.DataFrame(rows)
     if table.empty:
         print("Nothing joined.", file=sys.stderr)
         return 2
-    table["line_move"] = table["close_consensus"] - table["open_consensus"]
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     out = PROCESSED_DIR / OUTPUT_FILENAME
     table.to_csv(out, index=False)
