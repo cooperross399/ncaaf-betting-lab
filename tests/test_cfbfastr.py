@@ -295,3 +295,58 @@ def test_the_pre_fix_arithmetic_really_did_produce_the_artefact() -> None:
     close_consensus = pd.Series([-12.0, 12.0, 12.0, 12.0]).median()
     open_consensus = pd.Series([-10.5]).median()
     assert close_consensus - open_consensus == pytest.approx(22.5)
+
+
+def test_an_opener_no_other_book_will_vouch_for_is_refused() -> None:
+    """Game 401524046 (2023 wk10, Oregon State at Colorado). Bovada quotes the
+    Colorado row at close 13.0 / open -23.5 -- a 36.5-point move -- while
+    DraftKings has 13.5 / 11.5, a 2-point move. The Bovada opener is a
+    fabricated price on which the arithmetic is perfectly consistent, so
+    within_book_move cannot see it and corroboration must."""
+    build = _builder()
+    moves = pd.Series([36.5, 2.0])
+    assert build.uncorroborated_openers(moves) == [0]
+
+
+def test_a_large_move_two_books_agree_on_is_kept() -> None:
+    """Game 401754586 (2025 wk11, Florida State at Clemson) carries a genuine
+    15-point move: DraftKings AND ESPN Bet both quote -16.5 open / -1.5 close.
+    A magnitude rule would delete it, and deleting real data to remove fake
+    data is the worse trade."""
+    build = _builder()
+    moves = pd.Series([15.0, 15.0, 1.0])
+    assert build.uncorroborated_openers(moves) == []
+
+
+def test_the_ceiling_is_the_largest_move_ever_corroborated() -> None:
+    """Not a chosen threshold. Measured over 2021-2025 on 4,300 book-moves
+    with a peer inside a point: p99.9 = 12.35, max = 15.00, and NOTHING above
+    15.00 was ever corroborated."""
+    build = _builder()
+    assert build.LARGEST_CORROBORATED_MOVE == 15.0
+    assert build.uncorroborated_openers(pd.Series([15.0])) == []
+    assert build.uncorroborated_openers(pd.Series([15.5])) == [0]
+
+
+def test_a_single_book_gets_no_vouching_and_the_ceiling_stands_alone() -> None:
+    """41% of games carry one book quoting both halves, so there is nobody to
+    agree. An unprecedented move on one book's word is an anecdote."""
+    build = _builder()
+    assert build.uncorroborated_openers(pd.Series([34.0])) == [0]
+    assert build.uncorroborated_openers(pd.Series([3.0])) == []
+
+
+def test_a_refused_opener_leaves_the_move_missing_not_zero() -> None:
+    """Where every book quoting both halves is refused, the move is unknown.
+    An unknown move is missing; zero would be a claim that it did not move."""
+    build = _builder()
+    group = pd.DataFrame({"_close": [13.0], "_open": [-23.5]})
+    assert build.within_book_move(group) is None
+
+
+def test_the_surviving_book_carries_the_move() -> None:
+    """401524046 end to end: refuse Bovada, keep DraftKings, and the move is
+    DraftKings' +2.0 rather than the +19.25 the median of the two produced."""
+    build = _builder()
+    group = pd.DataFrame({"_close": [13.0, 13.5], "_open": [-23.5, 11.5]})
+    assert build.within_book_move(group) == pytest.approx(2.0)

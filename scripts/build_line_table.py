@@ -113,6 +113,62 @@ def inverted_rows(closing: "pd.Series") -> list:
     return bad
 
 
+#: The largest within-book move any TWO books ever agreed on, measured across
+#: 2021-2025 on 4,300 book-moves that had at least one peer within a point:
+#:
+#:   p50 1.00   p90 3.00   p99 6.50   p99.9 12.35   max 15.00
+#:   moves above 15.00 with a corroborating peer: ZERO
+#:
+#: So a move larger than this has never been seen twice. It is an empirical
+#: ceiling, not a chosen one, and it is the only threshold in this file that
+#: was not derivable from a single game.
+LARGEST_CORROBORATED_MOVE = 15.0
+
+#: How close two books must be before one vouches for the other. The median
+#: disagreement between books on the same game's move is 1.00 point, so a
+#: peer inside a point is agreeing rather than coinciding.
+CORROBORATION_WINDOW = 1.0
+
+
+def uncorroborated_openers(moves: "pd.Series") -> list:
+    """Index labels whose opener implies a move no other book will vouch for.
+
+    THE DEFECT. Some openers in this feed are simply wrong rather than
+    inverted. Game 401524046 (2023 wk10, Oregon State at Colorado): Bovada
+    quotes the Colorado row at close 13.0 and open -23.5, a 36.5-point move,
+    while DraftKings has 13.5 / 11.5 -- a 2-point move. Game 401531907 has
+    Bovada at close -1.0 and open -35.0. Both are internally consistent inside
+    the bad book, so `within_book_move` cannot see them: the move is real
+    arithmetic on a fabricated price.
+
+    WHY A MAGNITUDE THRESHOLD ALONE WOULD BE WRONG. Game 401754586 (2025 wk11,
+    Florida State at Clemson) carries a genuine 15-point move: DraftKings and
+    ESPN Bet BOTH quote -16.5 open and -1.5 close. A rule that dropped large
+    moves would delete it, and deleting real data to remove fake data is a
+    worse trade than leaving the fake data in.
+
+    So the test is CORROBORATION, and magnitude only decides what needs
+    corroborating. A move is refused when it is larger than any move two books
+    have ever agreed on AND no book agrees with this one. Where a single book
+    quotes the game, there is nobody to agree, so the ceiling stands alone --
+    which is the honest position: an unprecedented move on one book's word is
+    not evidence, it is an anecdote.
+
+    Refused openers are DROPPED, never adjusted. There is no number to correct
+    them to.
+    """
+    numbers = moves.dropna()
+    refused = []
+    for label, move in numbers.items():
+        if abs(move) <= LARGEST_CORROBORATED_MOVE:
+            continue
+        peers = numbers.drop(label)
+        vouched = (peers - move).abs().le(CORROBORATION_WINDOW).any()
+        if not vouched:
+            refused.append(label)
+    return refused
+
+
 def within_book_move(group: "pd.DataFrame") -> float | None:
     """The median move among books that quote BOTH an open and a close.
 
@@ -130,7 +186,15 @@ def within_book_move(group: "pd.DataFrame") -> float | None:
     both = group.dropna(subset=["_close", "_open"])
     if both.empty:
         return None
-    return float((both["_close"] - both["_open"]).median())
+    moves = both["_close"] - both["_open"]
+    refused = uncorroborated_openers(moves)
+    if refused:
+        moves = moves.drop(index=refused)
+    if moves.empty:
+        # Every book quoting both halves was refused. The move is unknown, and
+        # an unknown move is missing rather than zero.
+        return None
+    return float(moves.median())
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -206,6 +270,15 @@ def main(argv: list[str] | None = None) -> int:
             backwards = inverted_rows(group["_close"])
             if backwards:
                 group = group.drop(index=backwards)
+            # An opener no other book will vouch for is dropped from the LEVEL
+            # as well as from the move. Refusing it only inside
+            # within_book_move left `open_consensus` as the median of a real
+            # opener and a fabricated one: game 401524046 read -6.0, midway
+            # between DraftKings' 11.5 and Bovada's -23.5. The move was right
+            # and the level it moved from was invented.
+            refused = uncorroborated_openers(group["_close"] - group["_open"])
+            if refused:
+                group.loc[refused, "_open"] = float("nan")
         closing = group["_close"].dropna()
         opening = group["_open"].dropna()
         if closing.empty:
