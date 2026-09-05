@@ -253,26 +253,45 @@ def test_a_move_no_book_can_evidence_is_missing_not_reconstructed() -> None:
     assert build.within_book_move(group) is None
 
 
-def test_the_shipped_table_carries_no_sign_collision() -> None:
-    """The regression, against the real table rather than a fixture.
+def test_the_two_rules_compose_on_the_shape_that_defeated_them() -> None:
+    """End to end on a synthetic feed carrying game 401331447's exact shape.
 
-    Before the fix the table held a 22.5-point move on 401331447 -- 10.6
-    standard deviations, and 1,721 of the 15,386 pts^2 the close-beats-open
-    control was built from. The game is still present; its opener is not,
-    because the only book quoting one quoted it backwards.
+    This replaces a test that read data/processed/line_table.csv. That file is
+    gitignored, so the test passed on a machine that had built the table and
+    raised FileNotFoundError anywhere else -- the same "runs on one machine"
+    defect this repository has now found four times, and it would have gone red
+    on CI's very first run.
+
+    The shape: four books quote the home row, one of them backwards, and the
+    backwards one is the ONLY book carrying an opener. Before the fix that game
+    reported a 22.5-point move. After it, the close is the honest +12.0 and the
+    opener is missing, because the only evidence for it could not be read.
     """
-    table = pd.read_csv(PROCESSED_DIR / "line_table.csv", dtype={"game_id": str})
-    spread = table[table["market"] == "spread"]
-    assert not spread.empty, "no spread rows; this test would pass vacuously"
-
-    collision = spread[spread["line_move"].abs() >= 20]
-    assert collision.empty, (
-        "a line move of 20+ points is a sign collision, not a market move: "
-        f"{collision[['game_id', 'open_consensus', 'close_consensus', 'line_move']].to_dict('records')}"
+    build = _builder()
+    group = pd.DataFrame(
+        {
+            "_close": [-12.0, 12.0, 12.0, 12.0],
+            "_open": [-10.5, None, None, None],
+        }
     )
 
-    game = spread[spread["game_id"] == "401331447"]
-    assert len(game) == 1, "401331447 should still be in the table"
-    assert pd.isna(game.iloc[0]["open_consensus"]), (
-        "401331447's only opener came from the inverted book and must be missing"
+    backwards = build.inverted_rows(group["_close"])
+    assert backwards == [0], "the inverted book was not identified"
+
+    kept = group.drop(index=backwards)
+    assert float(kept["_close"].median()) == 12.0, "the honest sign did not survive"
+    assert kept["_open"].dropna().empty, "the only opener came from the dropped book"
+    assert build.within_book_move(kept) is None, (
+        "with no book quoting both halves the move must be missing, not "
+        "reconstructed from two consensuses taken over different book sets"
     )
+
+
+def test_the_pre_fix_arithmetic_really_did_produce_the_artefact() -> None:
+    """The number the old code produced, so the regression is anchored to a
+    measurement rather than to a description of one. Median over four books
+    for the close, median over one for the open, and the difference is a
+    22.5-point move on a feed whose moves have a standard deviation near 2."""
+    close_consensus = pd.Series([-12.0, 12.0, 12.0, 12.0]).median()
+    open_consensus = pd.Series([-10.5]).median()
+    assert close_consensus - open_consensus == pytest.approx(22.5)
