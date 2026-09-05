@@ -8,10 +8,13 @@
 # hypothesis in a PR diff, walks straight past it — and a PR diff is
 # exactly how a ledger reaches main. This workflow is that missing half: it
 # compares the ledger on the head against the ledger at the base and refuses any
-# run in which a recorded hypothesis was removed or rewritten. The tracked ledger
-# holds 78 hypotheses and hands back a x1.742 widening on every new 95% interval;
-# lose entries quietly and the lab reports a correction smaller than the truth,
-# which is the failure the rule names.
+# run in which a recorded hypothesis was removed or rewritten. The count of
+# hypotheses and the widening factor derived from it are not copied here — they
+# are in data/outputs/experiment_ledger.md, which the render step below
+# regenerates and demands no diff against, so there is one place they can be
+# read and it is a place that is checked. Lose entries quietly and the lab
+# reports a correction smaller than the truth, which is the failure the rule
+# names.
 #
 # This workflow READS and never writes. It holds `contents: read`, so it cannot
 # commit, push, or "repair" a ledger — a guard that can rewrite the evidence has
@@ -44,11 +47,18 @@ on:
   # first sees the edit after it has landed. The ledger is checked BEFORE the
   # merge — a gate that fires post-merge is a notification.
   #
-  # The cost, stated rather than discovered: the FIRST push of a new branch
-  # carries an all-zeros `github.event.before`, which the resolve step below
-  # treats as a hard stop. That run is red. It is red because nothing was
-  # compared, which is the honest report; the branch's PR run compares it
-  # properly against the base.
+  # The FIRST push of a new branch carries an all-zeros `github.event.before`.
+  # That used to be a hard stop, so every new branch's first push was red — and
+  # a check that is red on every branch's first push is a check people learn to
+  # ignore, which is a worse outcome than the one fail-closed was protecting.
+  # The resolve step below now answers the zeros with `git merge-base HEAD
+  # origin/main`, which is the commit the branch left main at and the honest
+  # base for the range the push introduced. Driven with the all-zeros input in
+  # tests/test_the_guards_exist.py rather than reasoned about, in both
+  # directions: the zeros resolve to the merge-base, and a zeros push with no
+  # origin to fetch is still exit 1. A base that cannot be READ — a
+  # force-pushed-away sha, a shallow clone — is still a hard stop, driven there
+  # with a sha the repository does not hold.
   pull_request:
   push:
   workflow_dispatch:
@@ -121,9 +131,35 @@ jobs:
             echo "::error::No base ref for event ${EVENT_NAME}. The append-only check did not run. This is a broken guard, NOT evidence that the ledger is intact."
             exit 1
           fi
-          # An all-zeros `before` (first push of a branch), a force-pushed-away
-          # sha, or a shallow clone all land here. Every one of them means the
-          # comparison cannot be made — which is a failure, never a pass.
+          # THE FIRST PUSH OF A BRANCH carries an all-zeros `before`, and it
+          # used to land in the hard stop below. Fail-closed was the right
+          # instinct and the wrong outcome: EVERY new branch's first push went
+          # red, which does not teach people that the ledger is unverified, it
+          # teaches them that this check is noise. A red tick nobody reads is a
+          # guard that has already been removed.
+          #
+          # There is a base to compare against in that case, and it is not
+          # "nothing": the commit this branch left main at. So resolve it —
+          # `git merge-base HEAD origin/main` — and compare against THAT. The
+          # range is then exactly the branch's own commits, which is the range
+          # the push introduced.
+          #
+          # Both fetch and merge-base end in `exit 1` on failure: if the base
+          # cannot be resolved after all, this is back to a hard stop. The
+          # zeros are a KNOWN shape with a known answer; everything else that
+          # cannot be resolved still falls through to the refusal below.
+          case "${BASE}" in
+            *[!0]*) ;;
+            *)
+              git fetch --no-tags --quiet origin +refs/heads/main:refs/remotes/origin/main || { echo "::error::Cannot fetch origin/main to resolve the base of a first push. The append-only check did not run. This is a broken guard, NOT evidence that the ledger is intact."; exit 1; }
+              BASE="$(git merge-base HEAD refs/remotes/origin/main)" || { echo "::error::Cannot find a merge-base between HEAD and origin/main. The append-only check did not run. This is a broken guard, NOT evidence that the ledger is intact."; exit 1; }
+              echo "First push of this branch: the base is the merge-base with origin/main, ${BASE}."
+              ;;
+          esac
+          # A force-pushed-away sha or a shallow clone still lands here, and a
+          # zeros value that survived the case above would too. Every one of
+          # them means the comparison cannot be made — which is a failure,
+          # never a pass.
           if ! git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
             echo "::error::Cannot resolve the base commit ${BASE}. The append-only check did not run. This is a broken guard, NOT evidence that the ledger is intact."
             exit 1
@@ -212,9 +248,10 @@ jobs:
         # shrink guard in save() against CI's copy of the ledger; the diff proves
         # the tracked .md is the render of the tracked .json rather than a
         # hand-edited artefact; and it proves the render still reproduces. The
-        # script is byte-stable on a clean clone today — it prints "78 distinct
-        # hypotheses (+0). Any new 95% interval widens by x1.74." and leaves
-        # `git status --porcelain` empty.
+        # property asserted is byte-stability, not a figure: on a clean clone
+        # the script prints the ledger's own count and widening factor, adds
+        # nothing (+0), and leaves `git status --porcelain` empty. The figures
+        # themselves live in the tracked render this step re-derives.
         #
         # PYTHONPATH=src is required: pyproject's `pythonpath` key applies to
         # pytest only, and without it the script dies with ModuleNotFoundError.

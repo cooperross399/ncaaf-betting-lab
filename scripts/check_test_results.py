@@ -65,6 +65,35 @@ DROPS EVERY TEST IN TWO FILES AND STAYS GREEN. Deleting both hard-rule guards
 makes the build GREENER, and pytest has no way to say so. Counting what ran is
 the only way a deletion reads as red instead of as a smaller green.
 
+REQUIRED_MODULES FLOORS A MODULE AT ONE RECORDED TESTCASE, NOT AT ITS TESTS.
+That is the shape of this half of the gate and it is worth saying plainly:
+`--deselect tests/test_no_secrets_committed.py::test_no_tracked_file_assigns_a_
+real_credential`, written into `addopts` in pyproject.toml, removed one
+hard-rule credential guard and this script exited 0 — measured on this
+repository at 4454b20 under `python -m pytest -q --junit-xml=<path>` followed by
+this script on that path: one test deselected, the rest of the suite passing.
+The module was still there and still contributed hundreds of testcases, so
+nothing here could object.
+
+Nothing here CAN object, and the reason is structural rather than an oversight
+to fix later: the evidence file records the tests that ran and never the ones
+the configuration removed, so the shortfall is not in the bytes this script is
+handed. Closing it needs a second input — the test sources — and this script is
+deliberately a function of one argv path and the bytes at it. That property is
+not decoration: `tests/test_check_test_results.py::
+test_the_gate_opens_nothing_but_the_path_it_was_handed` runs this file with the
+file-opening primitives wrapped and requires the set of paths touched to be
+exactly the junit path, because a second file a gate consults is a waiver
+channel whatever the file is called.
+
+So the per-TEST floor lives where the observation is free: the root conftest.py
+compares the test functions each required module defines, read with `ast`,
+against the ones pytest is still holding after every deselection hook has run,
+and refuses the run when any are missing. It also asks the live `config` what
+narrowing options it actually received. `tests/test_the_guards_exist.py` drives
+both in a synthetic tree and reads the exit code, and that module is in the
+manifest below so deleting it is red.
+
 No integer is quoted for that drop. The size of it is whatever
 `pytest --collect-only -q tests/test_no_secrets_committed.py
 tests/test_no_sibling_lab_import.py` reports today. An earlier revision cited an
@@ -111,6 +140,7 @@ REQUIRED_MODULES: tuple[str, ...] = (
     "tests/test_workflows.py",
     "tests/test_check_test_results.py",
     "tests/test_check_ledger_append_only.py",
+    "tests/test_the_guards_exist.py",
 )
 
 
