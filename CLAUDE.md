@@ -48,10 +48,21 @@ experiment ledger, and seven report modules. Two workflows: `Tests` and
 `Ledger Guard`. **The suite passes with ZERO skips** on a clean
 requirements-only clone — no count is written here, because the count moves
 whenever a guard gains a case and a stale absolute is worse than no number.
-That property is enforced rather than reported: `scripts/check_test_results.py`
-parses the junit XML and fails the build on any skip, any xfail, any xpass from
-a marker that did not write `strict=False`, any failure or error, an empty run,
-or a required guard module that is absent or contributed zero tests. Note the
+That property is enforced rather than reported, in two places.
+`scripts/check_test_results.py` parses the junit XML and fails the build on any
+skip — a collection-phase one included, measured: pytest writes a module-level
+`skip` or `importorskip` into the XML as `<testcase classname=""
+name="tests.test_x"><skipped message="collection skipped">` — any xfail, any
+xpass from a marker that did not write `strict=False`, any failure or error, an
+empty run, or a required guard module that is absent or contributed zero tests.
+The root `conftest.py` is the other place, and it covers what the XML cannot:
+it refuses a run that arrived NARROWED (`addopts`, `PYTEST_ADDOPTS`,
+`--deselect`, `-k`, `--ignore`, asked of the live `config` rather than matched
+in a command line), and it compares the test functions each required guard
+module defines against the ones pytest is still holding. That hole was measured
+rather than supposed: `--deselect` on one credential guard, written into
+`addopts`, gave `527 passed, 1 deselected` and the junit gate exited 0, because
+the evidence file records what ran and never what the configuration removed. Note the
 shape of that xpass clause: `xfail_strict = true` in `pyproject.toml` sets the
 DEFAULT and only the default. A marker overrides it per test, and the xpass of
 a test marked `xfail(strict=False)` reaches the XML as a bare `<testcase/>` no
@@ -63,8 +74,13 @@ still in two directions that were also run: remove `xfail_strict` or set it
 false and EVERY xpass goes invisible rather than just the marked one, and
 `--runxfail` on the pytest command line makes the marker inert so no xpass is
 recorded at all. The first is why the flag is a dependency; the second is a
-flag that disarms a gate rather than narrowing a run, which no rule here
-currently sorts into that category.
+flag that disarms a gate rather than narrowing a run. An earlier revision of
+this paragraph, and of tests.yml's header, said no rule sorted `--runxfail`
+into any banned set. That was false when it was written: it is in
+`NARROWING_PYTEST_LONG_FLAGS` in `tests/test_workflows.py` and has always been
+rejected. The suite line is now a WHITELIST — `-q`, `-rs` and one junit path
+under `$RUNNER_TEMP` — so which disarming flags anybody remembered to enumerate
+no longer decides anything.
 
 This paragraph used to promise that two skips would resolve themselves. They did
 resolve, but not for the stated reason, and one of the reasons was never true:

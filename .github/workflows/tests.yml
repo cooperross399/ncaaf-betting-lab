@@ -40,6 +40,21 @@
 # gate that can drop a case deserves a test of its own. Cited by name and not by
 # position: steps get inserted, and a comment that counts them decays silently.
 #
+# THE ROOT conftest.py IS THE THIRD PIECE, and it covers what neither of the
+# other two can. It refuses a run that arrived narrowed — `addopts` in
+# pyproject.toml, `PYTEST_ADDOPTS` in the environment, `--deselect`, `-k`,
+# `--ignore` — by asking the live `config` what it ACTUALLY received rather
+# than by reading a command line, and it turns a collection-phase skip into
+# exit 1 for anybody running the suite by hand, where the junit gate is not
+# there to read anything. The hole it closes was measured on this repository:
+# `--deselect` on one hard-rule credential guard, written into `addopts`, gave
+# `527 passed, 1 deselected` and the gate below exited 0, because the junit
+# records the tests that ran and never the ones the configuration removed.
+# It is not a substitute for the gate below — a conftest that is deleted stops
+# objecting — which is why tests/test_the_guards_exist.py reads it, drives it in
+# a synthetic tree and reads the exit code, and why that module is in the gate's
+# REQUIRED_MODULES.
+#
 # pyproject.toml sets `xfail_strict = true` under [tool.pytest.ini_options], and
 # that flag is load-bearing HERE — but it sets the DEFAULT, and a marker
 # overrides the default. So state the gate's reach as a spelling and not as a
@@ -59,10 +74,16 @@
 #      and not a preference. Do not remove it to quiet a run.
 #   2. Add `--runxfail` to the pytest invocation and the marker goes inert:
 #      pytest reports a plain pass, there is no xpass to write down, and both
-#      pytest and this gate exit 0. It is in NO banned-flag set in
-#      tests/test_workflows.py, because it narrows nothing — it disarms. A flag
-#      that disarms a gate is a different category from one that shortens a run,
-#      and this file cannot be the thing that says so.
+#      pytest and this gate exit 0. This said the flag was "in NO banned-flag
+#      set in tests/test_workflows.py", and that was false when it was written:
+#      `--runxfail` is in NARROWING_PYTEST_LONG_FLAGS there and
+#      `test_a_narrowing_pytest_flag_is_rejected` parametrises over that set, so
+#      the flag has always been rejected. What was true is the reasoning around
+#      it — it narrows nothing, it disarms — and the file's own comment on that
+#      set says as much. The suite line is now a WHITELIST of `-q`, `-rs` and
+#      the junit path, so the question of which disarming flags anybody
+#      remembered to enumerate no longer decides anything: an argument that is
+#      not on the list is rejected whether or not it has been thought about.
 #
 # The suite makes no network call and spends no provider credit. The two
 # `urlopen` call sites in this repo are in src/ncaaf_betting_lab/data/cfbfastr.py
@@ -232,7 +253,20 @@ jobs:
       # exact placement its own header warns about. Sharing the shell with the
       # command it vouches for is the whole point. The standalone step further
       # down is kept as a second belt for the job- and workflow-level case.
+      #
+      # PYTHONSAFEPATH TAKES THE CHECKOUT BACK OFF sys.path. `python -m pytest`
+      # puts the working directory ahead of site-packages, so a tracked
+      # `pytest.py` at the repository root IS the module `-m` finds. Measured
+      # on this repository: a two-line `pytest.py` holding `raise
+      # SystemExit(0)` made `python -m pytest -q` exit 0 with nothing
+      # collected, and the identical tree with PYTHONSAFEPATH=1 ran the whole
+      # suite. `coverage.py` and a `sitecustomize.py` on a declared PYTHONPATH
+      # are the same family. tests/test_the_guards_exist.py refuses the tracked
+      # half by name; this variable covers a file that arrived some other way,
+      # and tests/test_workflows.py requires it to be here.
       - name: Run the suite
+        env:
+          PYTHONSAFEPATH: '1'
         run: |
           set -euo pipefail
           if [ -n "${NCAAF_ODDS_API_KEY:-}" ] || [ -n "${FOOTBALL_ODDS_API_KEY:-}" ]; then
