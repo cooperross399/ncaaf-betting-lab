@@ -103,7 +103,7 @@
 #        * A PLUGIN loaded into the run is neither, and it is disclosed rather
 #          than implied shut: gap 5 in
 #          tests/test_the_guards_exist.py::test_known_gaps_that_still_get_through
-#          names the one shape still open and the measurement behind it.
+#          names the shapes still open and the measurement behind each.
 #
 # The suite makes no network call and spends no provider credit. The two
 # `urlopen` call sites in this repo are in src/ncaaf_betting_lab/data/cfbfastr.py

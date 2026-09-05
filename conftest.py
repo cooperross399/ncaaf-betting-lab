@@ -49,7 +49,7 @@ before pytest starts. What is NOT claimed is a route nobody has tried: this
 file observes the options in `NARROWING_OPTIONS`, any `addopts` at all and any
 `PYTEST_ADDOPTS` at all, and it observes them at `pytest_configure` — a plugin
 that removes tests later is the census's job, and gap 5 in
-`tests/test_the_guards_exist.py` says which shape of that still gets past it.
+`tests/test_the_guards_exist.py` says which shapes of that still get past it.
 
 WHAT THIS FILE DOES NOT DO, said plainly:
 
@@ -279,6 +279,29 @@ def pytest_collection_modifyitems(
         _fail("A required guard module is not running in full:", findings)
 
 
+def pytest_runtest_logreport(report: pytest.TestReport) -> None:
+    """What actually RAN, for the second census below.
+
+    `pytest_collection_modifyitems` is `trylast` among implementations of that
+    hook, which is as late as a census can be placed there — and it is still
+    not late enough. pytest calls `pytest_collection_finish` AFTER
+    `modifyitems`, so a plugin implementing it can call
+    `config.hook.pytest_deselected` and trim `session.items` once the census
+    has already counted them. Measured at 8891796 in a fresh venv: a pytest11
+    entry-point plugin doing exactly that removed a guard test and gave
+    `600 passed, 1 deselected`, pytest exit 0 and the gate exit 0, because the
+    module still contributed its other tests.
+
+    A test that was removed after collection never produces a setup report, so
+    this list is an observation nothing in the collection phase can reach.
+    """
+    if report.when == "setup":
+        _EXECUTED.append(report.nodeid)
+
+
+_EXECUTED: list[str] = []
+
+
 def pytest_collectreport(report: pytest.CollectReport) -> None:
     """Collection-phase skips, which `pytest_runtest_logreport` never sees.
 
@@ -293,6 +316,25 @@ _COLLECTION_SKIPS: list[str] = []
 
 
 def pytest_sessionfinish(session: pytest.Session, exitstatus: int) -> None:
+    # THE SECOND CENSUS, against what ran rather than against what was
+    # collected. The first one is outrun by any hook pytest calls after
+    # `pytest_collection_modifyitems`; nothing is called after the session
+    # ends. Restricted runs are exempt for the same reason as the first
+    # census -- a deliberate `pytest tests/test_x.py` is not a narrowed gate.
+    restricted = sorted(session.config.args) != sorted(
+        session.config.getini("testpaths")
+    )
+    if not restricted and _EXECUTED:
+        findings = census_findings(
+            _required_modules(), _EXECUTED, PROJECT_ROOT, restricted=False
+        )
+        if findings:
+            _fail(
+                "A required guard test was removed AFTER collection, so the "
+                "census that runs during collection could not see it:",
+                findings,
+            )
+
     if not _COLLECTION_SKIPS:
         return
     print(

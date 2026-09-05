@@ -687,9 +687,23 @@ def test_known_gaps_that_still_get_through() -> None:
     #        — MISSED: the test was deselected, suite exit 0, gate exit 0.
     #        That route is now refused by
     #        `test_the_root_conftest_is_the_only_tracked_one` above;
+    #      * a plugin implementing a plain `pytest_collection_finish`, which
+    #        pytest calls AFTER `pytest_collection_modifyitems`, so the census
+    #        counts an item it is about to remove — WAS MISSED, and is now
+    #        refused by the SECOND census in `pytest_sessionfinish`, which
+    #        reads what actually ran. Pinned by
+    #        `test_a_guard_test_removed_after_collection_is_not_a_pass`;
+    #        disabling that census makes it fail;
     #      * an installed plugin doing it in a HOOK WRAPPER, whose post-yield
     #        half runs after every implementation including the census —
-    #        MISSED, suite exit 0. That one is still open, and it is the gap.
+    #        MISSED, suite exit 0. That one is still open.
+    #
+    #    This list said "that one is still open, and it is the gap" while
+    #    naming one shape. It was at least two: the collection_finish shape
+    #    above was measured missing at 8891796 and is closed here. Whether the
+    #    wrapper is the LAST one is not something this comment can assert —
+    #    what it can say is that no shape known to this repository is open
+    #    except that one.
     #    The sentence that used to stand here said what limits it is that
     #    requirements.txt is a reviewed file the workflow installs from and
     #    nothing else. That is not what limits it. `pip install -r
@@ -804,3 +818,70 @@ def test_the_required_status_check_contexts_still_exist() -> None:
             f"required status check is named {context!r}. A renamed job is a "
             "required check that never reports."
         )
+
+
+LATE_DESELECT_PLUGIN = '''
+# A plugin that removes a guard test AFTER collection. pytest calls
+# pytest_collection_finish after pytest_collection_modifyitems, so the census
+# that runs in modifyitems -- however `trylast` -- has already counted the
+# item this removes.
+def pytest_collection_finish(session):
+    victim = "tests/test_guard.py::test_one"
+    doomed = [i for i in session.items if i.nodeid == victim]
+    if doomed:
+        session.config.hook.pytest_deselected(items=doomed)
+        session.items[:] = [i for i in session.items if i.nodeid != victim]
+'''
+
+
+def test_a_guard_test_removed_after_collection_is_not_a_pass(tmp_path: Path) -> None:
+    """The shape the collection-phase census cannot see, and the second one can.
+
+    Gap 5 named an installed plugin deselecting from a HOOK WRAPPER. This is a
+    second, plainer shape of the same defect: an ordinary
+    `pytest_collection_finish`, no wrapper and no `trylast`, which pytest calls
+    AFTER `pytest_collection_modifyitems`. The census in that hook counts an
+    item this is about to remove, and the module still contributes its other
+    tests, so a module-level floor sees nothing wrong.
+
+    The second census reads what actually RAN -- a test removed after
+    collection never produces a setup report -- and nothing pytest calls runs
+    after the session ends. Loaded from a file in the tree with `-p` rather
+    than installed, because the mechanism under test is the hook ordering, not
+    the entry-point machinery.
+    """
+    root = _synthetic_tree(
+        tmp_path,
+        {
+            "test_guard.py": GUARD_MODULE,
+            "test_other.py": "def test_something_else() -> None:\n    assert True\n",
+        },
+    )
+    (root / "lateplug.py").write_text(
+        textwrap.dedent(LATE_DESELECT_PLUGIN), encoding="utf-8"
+    )
+
+    done = _run_pytest(root, "-p", "lateplug")
+
+    assert done.returncode == 1, (
+        "A guard test deselected after collection left pytest reporting "
+        "success. The census in pytest_collection_modifyitems cannot see this "
+        f"shape.\nexit={done.returncode}\n{done.stdout}\n{done.stderr}"
+    )
+    assert "removed AFTER collection" in done.stdout + done.stderr, (
+        "The run failed, but not for the reason this test is about.\n"
+        f"{done.stdout}\n{done.stderr}"
+    )
+
+
+def test_the_second_census_does_not_fire_on_a_clean_run(tmp_path: Path) -> None:
+    """The accept direction. A rule that rejects correct work gets deleted."""
+    root = _synthetic_tree(
+        tmp_path,
+        {
+            "test_guard.py": GUARD_MODULE,
+            "test_other.py": "def test_something_else() -> None:\n    assert True\n",
+        },
+    )
+    done = _run_pytest(root)
+    assert done.returncode == 0, f"{done.stdout}\n{done.stderr}"
