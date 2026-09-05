@@ -23,12 +23,13 @@ SECOND, and it is the one the junit CANNOT close: the run can be narrowed
 before it starts. `--deselect tests/test_no_secrets_committed.py::
 test_no_tracked_file_assigns_a_real_credential` written into `addopts` in
 pyproject.toml, or into `PYTEST_ADDOPTS`, removes one hard-rule guard and
-leaves every other check green. Measured on this repository at 4454b20:
-`527 passed, 1 deselected` and `scripts/check_test_results.py` exits 0, because
-the manifest floors a module at ONE recorded testcase and the module still had
-hundreds. The evidence file records the tests that ran and never the ones the
-configuration removed, so no reader of that file can notice — the observation
-has to happen here, in the process that was handed the configuration.
+leaves every other check green. Measured on this repository at 4454b20 under
+`python -m pytest -q`: one deselected test, everything else passing, and
+`scripts/check_test_results.py` exits 0, because the manifest floors a module
+at ONE recorded testcase and the module still had hundreds. The evidence file
+records the tests that ran and never the ones the configuration removed, so no
+reader of that file can notice — the observation has to happen here, in the
+process that was handed the configuration.
 
 So this file OBSERVES rather than spells. `pytest_configure` asks the live
 `config` what it actually received; the census in
@@ -38,9 +39,17 @@ pytest's own deselection hooks have run. `trylast` is a preference in pytest's
 hook ordering and not a guarantee of running last, which is gap 5 in
 `tests/test_the_guards_exist.py::test_known_gaps_that_still_get_through`.
 
-Neither is a text match on a command line, and neither can be defeated by assembling the flags out of pieces, spelling `-k` where
-`--deselect` was banned, or setting the variable from a `sitecustomize` the
-workflow never mentions.
+Neither is a text match on a command line, which is what makes them indifferent
+to how the flags were spelled or assembled. Three routes that defeat a text
+match were run against this file at 5072f97, each as `python -m pytest -q` in a
+git-backed copy of this repository, and each exited 1 naming what pytest had
+received: `-k` where `--deselect` was banned; `addopts = "--runxfail"` in
+pyproject.toml; and a `sitecustomize.py` on PYTHONPATH setting `PYTEST_ADDOPTS`
+before pytest starts. What is NOT claimed is a route nobody has tried: this
+file observes the options in `NARROWING_OPTIONS`, any `addopts` at all and any
+`PYTEST_ADDOPTS` at all, and it observes them at `pytest_configure` — a plugin
+that removes tests later is the census's job, and gap 5 in
+`tests/test_the_guards_exist.py` says which shape of that still gets past it.
 
 WHAT THIS FILE DOES NOT DO, said plainly:
 

@@ -8,10 +8,13 @@
 # hypothesis in a PR diff, walks straight past it — and a PR diff is
 # exactly how a ledger reaches main. This workflow is that missing half: it
 # compares the ledger on the head against the ledger at the base and refuses any
-# run in which a recorded hypothesis was removed or rewritten. The tracked ledger
-# holds 78 hypotheses and hands back a x1.742 widening on every new 95% interval;
-# lose entries quietly and the lab reports a correction smaller than the truth,
-# which is the failure the rule names.
+# run in which a recorded hypothesis was removed or rewritten. The count of
+# hypotheses and the widening factor derived from it are not copied here — they
+# are in data/outputs/experiment_ledger.md, which the render step below
+# regenerates and demands no diff against, so there is one place they can be
+# read and it is a place that is checked. Lose entries quietly and the lab
+# reports a correction smaller than the truth, which is the failure the rule
+# names.
 #
 # This workflow READS and never writes. It holds `contents: read`, so it cannot
 # commit, push, or "repair" a ledger — a guard that can rewrite the evidence has
@@ -51,9 +54,11 @@ on:
   # The resolve step below now answers the zeros with `git merge-base HEAD
   # origin/main`, which is the commit the branch left main at and the honest
   # base for the range the push introduced. Driven with the all-zeros input in
-  # tests/test_the_guards_exist.py rather than reasoned about. Every OTHER
-  # unresolvable base — a force-pushed-away sha, a shallow clone — is still a
-  # hard stop.
+  # tests/test_the_guards_exist.py rather than reasoned about, in both
+  # directions: the zeros resolve to the merge-base, and a zeros push with no
+  # origin to fetch is still exit 1. A base that cannot be READ — a
+  # force-pushed-away sha, a shallow clone — is still a hard stop, driven there
+  # with a sha the repository does not hold.
   pull_request:
   push:
   workflow_dispatch:
@@ -243,9 +248,10 @@ jobs:
         # shrink guard in save() against CI's copy of the ledger; the diff proves
         # the tracked .md is the render of the tracked .json rather than a
         # hand-edited artefact; and it proves the render still reproduces. The
-        # script is byte-stable on a clean clone today — it prints "78 distinct
-        # hypotheses (+0). Any new 95% interval widens by x1.74." and leaves
-        # `git status --porcelain` empty.
+        # property asserted is byte-stability, not a figure: on a clean clone
+        # the script prints the ledger's own count and widening factor, adds
+        # nothing (+0), and leaves `git status --porcelain` empty. The figures
+        # themselves live in the tracked render this step re-derives.
         #
         # PYTHONPATH=src is required: pyproject's `pythonpath` key applies to
         # pytest only, and without it the script dies with ModuleNotFoundError.

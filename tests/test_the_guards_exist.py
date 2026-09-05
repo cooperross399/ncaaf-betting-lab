@@ -6,14 +6,15 @@ does what its prose says, and it does that by RUNNING it — a synthetic tree
 under a real pytest, a real git repository under the real resolve step — rather
 than by reading it.
 
-Four things live here, and each closes a hole that was measured open at 4454b20
-rather than imagined:
+What lives here, each of them a hole that was measured open — at 4454b20 unless
+another commit is named — rather than imagined:
 
 * A TRACKED FILE CAN SHADOW THE SUITE. `python -m pytest` puts the working
   directory ahead of site-packages, so a tracked `pytest.py` at the repository
   root is the module `-m` finds. Measured on this repository: `pytest.py`
   holding `raise SystemExit(0)` made `python -m pytest -q` exit 0 having
-  collected nothing; the identical tree with `PYTHONSAFEPATH=1` ran 529 tests.
+  collected nothing; the identical tree with `PYTHONSAFEPATH=1` ran the whole
+  suite.
   A `sitecustomize.py` on a declared PYTHONPATH is worse, because it runs
   BEFORE pytest and can set `PYTEST_ADDOPTS`: measured, `src/sitecustomize.py`
   plus the `PYTHONPATH=src` the ledger-guard workflow declares deselected a
@@ -27,8 +28,14 @@ rather than imagined:
   module at one recorded testcase, and the module still had hundreds.
 * THE LEDGER GUARD WAS RED ON EVERY BRANCH'S FIRST PUSH. Fail-closed on an
   all-zeros base, which is honest and teaches people to ignore the check.
+* A SECOND `conftest.py` IS A PLUGIN, AND IT BEATS THE CENSUS. Measured at
+  5072f97: a tracked `tests/conftest.py` whose `trylast` hook deselects a
+  hard-rule guard is registered later than the root conftest, so it runs after
+  the census that would have caught it — suite exit 0, gate exit 0, one guard
+  gone. The same deselection from an installed plugin's `trylast` hook was
+  caught. Only the root conftest may be tracked, and that is asserted below.
 
-The last three are driven, not read: the conftest is copied into a synthetic
+The middle three are driven, not read: the conftest is copied into a synthetic
 tree and a real pytest is run against it, and the resolve step is lifted out of
 the workflow with `yaml.safe_load` and run against a real temporary git
 repository. A guard that greps for a spelling proves only that the spelling is
@@ -211,6 +218,63 @@ def test_no_tracked_file_can_shadow_the_suite() -> None:
     )
 
 
+def extra_tracked_conftests(tracked: list[str]) -> list[str]:
+    """Every tracked `conftest.py` that is not the root one.
+
+    Written as a function of a path list so both directions can be asserted:
+    the real repository, and a synthetic list that must come back non-empty.
+    """
+    return sorted(
+        entry for entry in tracked
+        if Path(entry).name == "conftest.py" and entry != "conftest.py"
+    )
+
+
+def test_the_root_conftest_is_the_only_tracked_one() -> None:
+    """A second `conftest.py` is a plugin, and it beats the census.
+
+    MEASURED at 5072f97, in a git-backed copy of this repository: a
+    `tests/conftest.py` whose `pytest_collection_modifyitems` is marked
+    `trylast` and deselects
+    `tests/test_no_secrets_committed.py::test_no_tracked_file_assigns_a_real_
+    credential` left that test deselected, `python -m pytest -q` exit 0 and
+    `python scripts/check_test_results.py` exit 0 — the root conftest's own
+    `trylast` census ran BEFORE it and counted a test that was about to be
+    removed. No install and no requirements.txt edit: one tracked file.
+
+    The same hook without `trylast` in that file was caught (exit 1), and so
+    was the same deselection from a plugin installed through a `pytest11` entry
+    point, `trylast` and all (exit 1) — both measured the same way. So this is
+    not a rule about plugins in general; it is about the one plugin shape that
+    is registered later than the root conftest and can therefore run after it.
+
+    The cost is stated rather than hidden: a `tests/conftest.py` holding
+    ordinary fixtures is rejected too. Fixtures can live in the root conftest
+    or in a plugin module a test imports; a second conftest is an edit here
+    with a reason beside it.
+    """
+    tracked = tracked_paths()
+    assert tracked, (
+        "git reported no tracked files at all, so this test compared nothing. "
+        "An absence is not a pass."
+    )
+    assert "conftest.py" in tracked, (
+        "The root conftest.py is not tracked. The in-process half of the skip "
+        "gate is what this module drives; if it is gone, that is a red build "
+        "and not a passing one."
+    )
+    extra = extra_tracked_conftests(tracked)
+    assert not extra, (
+        f"Tracked conftest files other than the root one: {extra}. A conftest "
+        "is a plugin: one registered after the root conftest can deselect in a "
+        "hook that runs after the root's `trylast` census, and the run exits 0 "
+        "with the guard removed."
+    )
+    assert extra_tracked_conftests(["conftest.py", "tests/conftest.py"]) == [
+        "tests/conftest.py"
+    ], "the rule cannot see the file it exists to see"
+
+
 def test_no_tracked_directory_shadows_an_installed_package() -> None:
     """The package spelling of the same shadow: `pytest/__init__.py` on a path
     entry is the distribution `-m` finds."""
@@ -346,7 +410,7 @@ def test_a_run_narrowed_before_it_started_is_not_a_pass(
     The ini and environment routes are the ones that matter: neither appears on
     any command line, so every rule in tests/test_workflows.py that reads the
     workflow sees a clean invocation. Measured on this repository at 4454b20
-    with the ini route: `527 passed, 1 deselected`, and
+    with the ini route: one guard test deselected, everything else green, and
     `scripts/check_test_results.py` exited 0 — the junit records the tests that
     ran and never the ones the configuration removed.
     """
@@ -519,9 +583,11 @@ def test_a_branchs_first_push_resolves_to_the_merge_base(tmp_path: Path) -> None
 def test_an_unresolvable_base_is_still_a_hard_stop(tmp_path: Path) -> None:
     """The half that must NOT have been widened by the fix above.
 
-    A force-pushed-away sha and a shallow clone both arrive as a base that
-    cannot be read, and "I could not read the prior ledger" must never take the
-    same branch as "there was no prior ledger".
+    Driven with a sha that is not in the repository. A force-pushed-away sha
+    and a shallow clone reach the same `git cat-file -e` and take the same
+    branch; what is asserted here is the one shape that was run. "I could not
+    read the prior ledger" must not take the same branch as "there was no prior
+    ledger".
     """
     clone, _ = _repository_with_a_branch(tmp_path)
     done = _drive_resolve(clone, tmp_path, "b" * 40)
@@ -529,6 +595,29 @@ def test_an_unresolvable_base_is_still_a_hard_stop(tmp_path: Path) -> None:
         f"An unresolvable base was accepted.\n{done.stdout}\n{done.stderr}"
     )
     assert "broken guard" in done.stdout + done.stderr
+
+
+def test_a_first_push_with_no_origin_to_fetch_is_a_hard_stop(tmp_path: Path) -> None:
+    """The zeros branch's OWN failure path, which nothing drove until now.
+
+    The fix answers an all-zeros base by fetching origin/main and taking the
+    merge-base. Both halves of that end in `exit 1` on failure, and a branch
+    with an `exit 1` nobody has executed is a branch nobody knows the exit code
+    of. Here the remote is pointed at a path that does not exist, so the fetch
+    is the half that fails, and the zeros must NOT fall through to a pass.
+    """
+    clone, _ = _repository_with_a_branch(tmp_path)
+    _git(clone, "remote", "set-url", "origin", str(tmp_path / "no-such-origin"))
+    _git(clone, "update-ref", "-d", "refs/remotes/origin/main")
+    done = _drive_resolve(clone, tmp_path, "0" * 40)
+    assert done.returncode == 1, (
+        "An all-zeros base with no origin to resolve it against was accepted.\n"
+        f"{done.stdout}\n{done.stderr}"
+    )
+    assert "Cannot fetch origin/main" in done.stdout, (
+        "The run failed for some reason other than the fetch this test is "
+        f"about, so the branch it claims to drive was not driven.\n{done.stdout}"
+    )
 
 
 def test_an_ordinary_push_still_compares_against_what_it_says(tmp_path: Path) -> None:
@@ -585,12 +674,29 @@ def test_known_gaps_that_still_get_through() -> None:
         "the build greener rather than redder."
     )
 
-    # 5. A pytest PLUGIN that deselects in a hook registered after this
-    #    repository's `trylast` one. `trylast` is a preference in pytest's
-    #    ordering, not a guarantee of being last, and a plugin installed by
-    #    requirements.txt runs inside the same process. Nothing here can see
-    #    that; what limits it is that requirements.txt is a reviewed file and
-    #    the workflow installs from it and nothing else.
+    # 5. A pytest PLUGIN whose hook runs AFTER this repository's `trylast`
+    #    one. `trylast` is a preference in pytest's ordering, not a guarantee
+    #    of being last. What that costs was measured at 5072f97 rather than
+    #    reasoned about, in a git-backed copy of this repository, each run as
+    #    `python -m pytest -q` followed by the gate on its junit:
+    #      * an installed plugin (a `pytest11` entry point) deselecting a
+    #        hard-rule guard from a `trylast` hook — CAUGHT, suite exit 1, the
+    #        census naming the missing test. It is registered at startup, so
+    #        the root conftest's hook still runs after it;
+    #      * the same deselection from a `tests/conftest.py` marked `trylast`
+    #        — MISSED: the test was deselected, suite exit 0, gate exit 0.
+    #        That route is now refused by
+    #        `test_the_root_conftest_is_the_only_tracked_one` above;
+    #      * an installed plugin doing it in a HOOK WRAPPER, whose post-yield
+    #        half runs after every implementation including the census —
+    #        MISSED, suite exit 0. That one is still open, and it is the gap.
+    #    The sentence that used to stand here said what limits it is that
+    #    requirements.txt is a reviewed file the workflow installs from and
+    #    nothing else. That is not what limits it. `pip install -r
+    #    requirements.txt` installs the transitive closure of eight `>=` floors
+    #    with no lockfile, and pytest loads a `pytest11` entry point from any
+    #    distribution in it, reviewed or not; and the conftest route above
+    #    needed no install at all.
     #
     # 6. An UNTRACKED shadow written by an earlier workflow step. The tracked
     #    half is refused above and `PYTHONSAFEPATH: '1'` on the suite step
@@ -615,6 +721,21 @@ def test_known_gaps_that_still_get_through() -> None:
     #    `test_the_required_status_check_contexts_still_exist` pins the job
     #    names; branch protection lives outside the repository and no test here
     #    can read it.
+    #
+    # 9. `RUNNER_TEMP` REASSIGNED UNDER A NAME ASSEMBLED AT RUN TIME. The rule
+    #    in `check_the_suite_line_carries_only_whitelisted_arguments` refuses
+    #    the literal token `RUNNER_TEMP=` on a command line, and the junit
+    #    prefix rule rests on that variable meaning what it says. Measured at
+    #    5072f97, and re-runnable in one command on any later tree: add the
+    #    step to .github/workflows/tests.yml and run
+    #    `python -m pytest -q tests/test_workflows.py`. A step holding
+    #    `V=RUNNER` on one line and
+    #    `echo "${V}_TEMP=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"` on the next
+    #    leaves every test in that file passing. Every later step then reads a
+    #    $RUNNER_TEMP inside the checkout, where a committed junit can be
+    #    waiting. A rule that matches a spelling does not see a spelling that
+    #    is assembled; what would see it is a rule about the value at run time,
+    #    and nothing in this repository observes the runner's environment.
 
 
 def test_the_shadow_rule_flags_what_it_names() -> None:

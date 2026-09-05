@@ -140,7 +140,8 @@ whether the job runs, whether the suite runs, or whether the gate runs.
 
 * `needs:` IS `if: false` REWORDED. `check_no_condition_disables_the_chain`
   reads `if:` and nothing else, so a `prep` job carrying `if: false` and a
-  one-line `needs: prep` on the tests job passed all 263 tests here — measured,
+  one-line `needs: prep` on the tests job passed every rule in this file —
+  measured at 4454b20,
   and it is the half of this that WAS measured. The other half is cited and not
   measured, because nothing inside a repository can observe its own branch
   protection: GitHub's troubleshooting guidance for required status checks
@@ -157,7 +158,10 @@ whether the job runs, whether the suite runs, or whether the gate runs.
   that path, and the gate grades the committed file while `git status
   --porcelain` stays empty. `check_the_suite_line_carries_only_whitelisted_
   arguments` is a WHITELIST — `-q`, `-rs`, one junit path under `$RUNNER_TEMP`,
-  nothing else.
+  nothing else — and `check_the_suite_runs_as_a_whole_command` pins the words in
+  FRONT of `pytest`, which no rule read until a `:` and a `PYTEST_PLUGINS=`
+  assignment were each put into the real tests.yml at 5072f97 and left every
+  test in this module passing.
 * THE GATE WAS PINNED BY SUBSTRING. A run line had only to CONTAIN
   `check_test_results.py` and the junit path, so `: python
   scripts/check_test_results.py "$RUNNER_TEMP/junit.xml"` — the no-op builtin
@@ -1987,13 +1991,24 @@ RUNNER_TEMP_PREFIXES = ("$RUNNER_TEMP/", "${{ runner.temp }}/")
 #: reason beside it.
 SUITE_FLAG_WHITELIST = frozenset({"-q", "-rs"})
 
-#: The gate, pinned as a whole command rather than as a substring. `run:` had
-#: only to CONTAIN the script name and the path, so
+#: The gate and the suite, pinned as whole commands rather than as substrings.
+#: `run:` had only to CONTAIN the gate's script name and the path, so
 #: `: python scripts/check_test_results.py "$RUNNER_TEMP/junit.xml"` — the
 #: no-op builtin in front — satisfied every rule in this file while the gate
 #: never executed (measured: exit 0 under `bash -e`).
-GATE_INTERPRETERS = frozenset({"python", "python3"})
+#:
+#: The suite line had the same shape and one more hole in it. Both were found
+#: at 5072f97 by making the edit to the REAL tests.yml and running this whole
+#: module against it — not a rule at a time, the file:
+#: `: python -m pytest -q -rs --junit-xml="$RUNNER_TEMP/junit.xml"` and
+#: `echo python -m pytest …` were full passes, and so was
+#: `PYTEST_PLUGINS=disarm python -m pytest -q -rs --junit-xml=…`, because the
+#: argument whitelist reads what follows the word `pytest` and nothing had ever
+#: read what precedes it. An assignment in front of a command is that command's
+#: environment, and `PYTEST_PLUGINS` is a plugin list pytest imports at startup.
+PYTHON_INTERPRETERS = frozenset({"python", "python3"})
 GATE_SCRIPT_PATH = "scripts/check_test_results.py"
+SUITE_MODULE = "pytest"
 
 #: The variable that takes the checkout's own directory back off `sys.path`.
 #: `python -m pytest` puts the working directory ahead of site-packages, so a
@@ -2037,7 +2052,7 @@ def check_no_job_can_be_skipped_into_a_pass(path: Path) -> None:
             needs: prep
 
     The required job is skipped because its dependency was skipped, and
-    What was measured here, at 4454b20: the whole linter passed (263 tests)
+    What was measured here, at 4454b20: the whole linter passed
     with `needs: prep` on the tests job and a `prep` job carrying `if: false`.
     What is CITED rather than measured, because no test inside a repository can
     observe its own branch protection: GitHub's troubleshooting guidance for
@@ -2096,8 +2111,39 @@ def check_the_suite_line_carries_only_whitelisted_arguments(path: Path) -> None:
     written, and every other rule in this file passes. Measured at 4454b20: the
     whole linter passed with that suite line in tests.yml.
 
-    So: every argument must be `-q`, `-rs` or the junit flag, and the junit
-    path must begin with the runner's temporary directory.
+    WHAT THIS RULE ACTUALLY ACCEPTS, stated at its real width, because the
+    sentence that used to stand here — "every argument must be `-q`, `-rs` or
+    the junit flag" — described a different and larger rule than the one below.
+    It reads every logical line of every `run:` block in this file's workflow
+    that contains the word `pytest`, takes the words AFTER the first such word,
+    and permits exactly:
+
+      * the tokens in `SUITE_FLAG_WHITELIST` — today `-q` and `-rs`, matched
+        whole, so `-qq` and `-q=1` are not the same token and are rejected;
+      * exactly one `--junit-xml`/`--junitxml`, in the `=` form or with its
+        value as the next word, whose value begins with `$RUNNER_TEMP/` or
+        `${{ runner.temp }}/`, holds no `..` segment, and names no tracked file.
+
+    Everything else on that line is rejected, including the separators of a
+    second command: `pytest … ; echo done` reports `;`, `echo` and `done` as
+    arguments (run, not assumed), so a second invocation behind the first is
+    rejected the same way a stray flag is.
+
+    Three things it does NOT decide, each run rather than reasoned about:
+
+      * the words BEFORE `pytest`. Until `check_the_suite_runs_as_a_whole_
+        command` was written beside it, `: python -m pytest …` and
+        `PYTEST_PLUGINS=disarm python -m pytest …` in the real tests.yml left
+        every test in this module passing (measured at 5072f97). That is the
+        sibling rule's subject, not this one's;
+      * flags that never appear on a command line. `addopts` in pyproject.toml
+        and `PYTEST_ADDOPTS` in the environment reach pytest as if typed; the
+        root conftest refuses BOTH wholesale — any value at all, not an
+        enumerated set — and `check_the_suite_is_never_narrowed` refuses the
+        variable by name here (measured at 5072f97: `PYTEST_ADDOPTS=--runxfail`
+        and `addopts = "--runxfail"` each exit 1 under `python -m pytest -q`);
+      * what a loaded plugin does once pytest is running. That is gap 5 in
+        `tests/test_the_guards_exist.py::test_known_gaps_that_still_get_through`.
 
     The tracked-path clause below is a second cut and its reach is narrow by
     construction: a path under `$RUNNER_TEMP` is not in the checkout, so today
@@ -2170,6 +2216,15 @@ def check_the_suite_line_carries_only_whitelisted_arguments(path: Path) -> None:
     # `RUNNER_TEMP=$GITHUB_WORKSPACE` into `$GITHUB_ENV` moves the evidence
     # into the checkout for every LATER step, with the pytest line and the gate
     # line both still reading exactly as they do now.
+    #
+    # This is a SPELLING rule and it is worth saying so where it is written:
+    # what it refuses is the literal token `RUNNER_TEMP` followed by `=` on a
+    # command line. A name assembled at run time is the same assignment and
+    # this does not see it — measured at 5072f97, `V=RUNNER` on one line and
+    # `echo "${V}_TEMP=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"` on the next passed
+    # every rule in CHECKS. That route is gap 9 in
+    # `tests/test_the_guards_exist.py::test_known_gaps_that_still_get_through`
+    # rather than a hole implied shut here.
     for name, block in run_blocks(document):
         for line in commands(block):
             assert not re.search(r"\bRUNNER_TEMP\s*=", line), (
@@ -2190,10 +2245,11 @@ def check_the_gate_runs_as_a_whole_command(path: Path) -> None:
     while the gate never executed. `echo`, `#` on the same logical line after a
     continuation, and `true` all do the same thing.
 
-    So the line is pinned as a WHOLE command the way the suite line now is:
-    exactly an interpreter, exactly the script, exactly one path. The executed
-    half — that a stub for that interpreter is actually entered, at the top
-    level, with the script as its first argument — is
+    So the line is pinned as a WHOLE command: exactly an interpreter, exactly
+    the script, exactly one path. `check_the_suite_runs_as_a_whole_command` is
+    the same pin on the other end of the chain, written later and for the same
+    reason. The executed half — that a stub for that interpreter is actually
+    entered, at the top level, with the script as its first argument — is
     `test_the_gate_step_is_executed_and_not_merely_written`, because a rule
     about text cannot tell `python x.py` from `: python x.py` and running it
     can.
@@ -2213,9 +2269,9 @@ def check_the_gate_runs_as_a_whole_command(path: Path) -> None:
             "scripts/check_test_results.py <path>` exits 0."
         )
         interpreter, script, _ = words
-        assert interpreter in GATE_INTERPRETERS, (
+        assert interpreter in PYTHON_INTERPRETERS, (
             f"{path.name}: step {name!r} starts the gate line with "
-            f"{interpreter!r}, not one of {sorted(GATE_INTERPRETERS)}. "
+            f"{interpreter!r}, not one of {sorted(PYTHON_INTERPRETERS)}. "
             "Whatever is in command position is what runs, and the gate is "
             "only a gate when it is the thing that runs."
         )
@@ -2224,6 +2280,56 @@ def check_the_gate_runs_as_a_whole_command(path: Path) -> None:
             f"{script!r}. The gate is {GATE_SCRIPT_PATH}, given as the first "
             "argument, so that the interpreter runs it rather than mentioning "
             "it."
+        )
+
+
+def check_the_suite_runs_as_a_whole_command(path: Path) -> None:
+    """The suite line is a command too, not a line that mentions pytest.
+
+    The argument whitelist reads the words after `pytest`. Nothing read the
+    words in front of it, and three shapes walked through that gap. Each was
+    measured at 5072f97 by putting it into the real tests.yml and running this
+    entire module: every test in the file passed, all three times.
+
+      * `: python -m pytest -q -rs --junit-xml="$RUNNER_TEMP/junit.xml"` — the
+        no-op builtin, exactly the shape that was found in front of the gate;
+      * `echo python -m pytest …`, which prints the command and runs nothing;
+      * `PYTEST_PLUGINS=disarm python -m pytest …`. An assignment in front of a
+        command is that command's environment, and `PYTEST_PLUGINS` is a list
+        of modules pytest imports as plugins at startup. No flag appears on the
+        line, so no rule that reads flags has anything to object to.
+
+    So the words before `pytest` are pinned the way the gate's are: exactly an
+    interpreter and `-m`. `env FOO=bar python -m pytest …` is rejected by that
+    too, which is the point — an environment assembled in front of the suite is
+    an input to the suite, and it belongs in an `env:` mapping where
+    `check_no_env_mapping_binds_a_provider_credential` and
+    `check_the_suite_is_never_narrowed` can both read it.
+
+    The executed half is `test_the_suite_step_is_executed_and_not_merely_
+    written`, for the reason the gate has one: a rule about text cannot tell
+    `python -m pytest` from `: python -m pytest`, and running the block can.
+    """
+    document = load(path)
+    for name, line in pytest_lines(document):
+        try:
+            words = shlex.split(line)
+        except ValueError:
+            words = line.split()
+        if SUITE_MODULE not in words:
+            # The word is on the line but not as a word of its own — a junit
+            # path with `pytest` in its name, say. `pytest_arguments` reads the
+            # same line and the whitelist grades whatever it finds there.
+            continue
+        head = words[: words.index(SUITE_MODULE)]
+        assert len(head) == 2 and head[0] in PYTHON_INTERPRETERS and head[1] == "-m", (
+            f"{path.name}: step {name!r} runs the suite as {line!r}. The words "
+            f"in front of `{SUITE_MODULE}` must be exactly "
+            f"`<{'|'.join(sorted(PYTHON_INTERPRETERS))}> -m` — found {head!r}. "
+            "A builtin in command position runs nothing while the line still "
+            "reads correctly, and an assignment in front of the command is an "
+            "environment nobody declared: `PYTEST_PLUGINS=x python -m pytest` "
+            "loads a plugin with no flag on the line for any rule to see."
         )
 
 
@@ -2298,6 +2404,7 @@ CHECKS: dict[str, Callable[[Path], None]] = {
         check_the_suite_line_carries_only_whitelisted_arguments
     ),
     "the_gate_runs_as_a_whole_command": check_the_gate_runs_as_a_whole_command,
+    "the_suite_runs_as_a_whole_command": check_the_suite_runs_as_a_whole_command,
     "the_suite_step_takes_the_checkout_off_the_path": (
         check_the_suite_step_takes_the_checkout_off_the_path
     ),
@@ -2513,6 +2620,14 @@ def test_the_gate_runs_as_a_whole_command(path: Path) -> None:
     """A rule that asks whether the line CONTAINS the gate is satisfied by
     `: python scripts/check_test_results.py <path>`, which runs nothing."""
     check_the_gate_runs_as_a_whole_command(path)
+
+
+@every_workflow
+def test_the_suite_runs_as_a_whole_command(path: Path) -> None:
+    """The argument whitelist reads what follows `pytest`; this reads what
+    precedes it. `: python -m pytest …` and `PYTEST_PLUGINS=x python -m pytest
+    …` were full passes on every other rule."""
+    check_the_suite_runs_as_a_whole_command(path)
 
 
 @every_workflow
@@ -2795,6 +2910,9 @@ def test_every_rule_has_a_case_that_proves_it_fires() -> None:
         ),
         "the_gate_runs_as_a_whole_command": (
             "test_a_gate_line_that_only_mentions_the_gate_is_rejected"
+        ),
+        "the_suite_runs_as_a_whole_command": (
+            "test_a_suite_line_that_only_mentions_pytest_is_rejected"
         ),
         "the_suite_step_takes_the_checkout_off_the_path": (
             "test_a_suite_step_without_pythonsafepath_is_rejected"
@@ -4921,7 +5039,7 @@ def test_a_needs_on_the_required_job_is_rejected(tmp_path: Path) -> None:
     """The one-line defeat of the whole file, measured before it was closed.
 
     At 4454b20, tests.yml with a `prep` job carrying `if: false` and
-    `needs: prep` on the tests job passed all 263 tests in this module. GitHub
+    `needs: prep` on the tests job passed every rule in this module. GitHub
     skips the dependent job and reports the skipped required check as Success,
     so the PR is mergeable with no suite behind it. `check_no_condition_
     disables_the_chain` cannot see it: the `if:` is on a job that runs no part
@@ -5068,6 +5186,53 @@ def test_the_suite_line_this_repository_uses_is_accepted(tmp_path: Path) -> None
 
 
 @pytest.mark.parametrize(
+    "suite",
+    [
+        ': python -m pytest -q -rs --junit-xml="$RUNNER_TEMP/junit.xml"',
+        'echo python -m pytest -q -rs --junit-xml="$RUNNER_TEMP/junit.xml"',
+        'true python -m pytest -q -rs --junit-xml="$RUNNER_TEMP/junit.xml"',
+        'PYTEST_PLUGINS=disarm python -m pytest -q -rs '
+        '--junit-xml="$RUNNER_TEMP/junit.xml"',
+        'env PYTEST_PLUGINS=disarm python -m pytest -q -rs '
+        '--junit-xml="$RUNNER_TEMP/junit.xml"',
+        'python -m coverage run -m pytest -q -rs '
+        '--junit-xml="$RUNNER_TEMP/junit.xml"',
+    ],
+    ids=["colon", "echo", "true", "assignment", "env", "wrapped"],
+)
+def test_a_suite_line_that_only_mentions_pytest_is_rejected(
+    tmp_path: Path, suite: str
+) -> None:
+    """The words in front of `pytest`, which no rule read until this one.
+
+    The first three were measured at 5072f97, in the real tests.yml, leaving
+    every test in this module passing: they run nothing while the line still
+    reads correctly. The two assignment shapes hand pytest a plugin list with
+    no flag on the line for any other rule to see, and the `PYTEST_PLUGINS=`
+    spelling was measured the same way. The last one is the accepted-looking
+    shape that is rejected on purpose: `coverage run -m pytest` is a different
+    program in command position with its own view of what to collect, and if it
+    is ever wanted it is an edit to this rule with a reason beside it.
+    """
+    assert_rejects(
+        check_the_suite_runs_as_a_whole_command,
+        workflow(tmp_path, mutate(SUITE_LINE, suite), "mentioned.yml"),
+    )
+
+
+def test_the_suite_line_this_repository_uses_reads_as_a_whole_command(
+    tmp_path: Path,
+) -> None:
+    """The accepting direction, and `python3` as well as `python` because both
+    are named in `PYTHON_INTERPRETERS` and a set with an untried member is an
+    enumeration nobody has checked."""
+    for suite in (SUITE_LINE, SUITE_LINE.replace("python ", "python3 ", 1)):
+        check_the_suite_runs_as_a_whole_command(
+            workflow(tmp_path, mutate(SUITE_LINE, suite), "whole-command.yml")
+        )
+
+
+@pytest.mark.parametrize(
     "line",
     [
         ': python scripts/check_test_results.py "$RUNNER_TEMP/junit.xml"',
@@ -5083,7 +5248,7 @@ def test_a_gate_line_that_only_mentions_the_gate_is_rejected(
     """A no-op in command position, and every textual rule is satisfied.
 
     Measured at 4454b20: tests.yml with `: python scripts/check_test_results.py
-    "$RUNNER_TEMP/junit.xml"` passed all 263 tests in this module, and `bash -e`
+    "$RUNNER_TEMP/junit.xml"` passed every rule in this module, and `bash -e`
     exits 0 on that line. The path still matches what pytest wrote, the script
     name is still there, the step still carries no condition — and nothing runs.
     """
@@ -5098,7 +5263,7 @@ def test_a_suite_step_without_pythonsafepath_is_rejected(tmp_path: Path) -> None
 
     Measured on this repository: a root `pytest.py` holding `raise
     SystemExit(0)` made `python -m pytest -q` exit 0 with nothing collected,
-    and the same tree with `PYTHONSAFEPATH=1` ran 529 tests.
+    and the same tree with `PYTHONSAFEPATH=1` ran the whole suite.
     """
     assert_rejects(
         check_the_suite_step_takes_the_checkout_off_the_path,
@@ -5115,6 +5280,78 @@ def test_a_suite_step_without_pythonsafepath_is_rejected(tmp_path: Path) -> None
             mutate("          PYTHONSAFEPATH: '1'\n", "          PYTHONSAFEPATH: '0'\n"),
             "safe-path-off.yml",
         ),
+    )
+
+
+def _suite_step_blocks() -> list[tuple[str, str, str]]:
+    """(workflow, step name, run block) for every step that runs the suite."""
+    found: list[tuple[str, str, str]] = []
+    for path in WORKFLOW_FILES:
+        for name, block in run_blocks(load(path)):
+            if any(re.search(r"\bpytest\b", line) for line in commands(block)):
+                found.append((path.name, name, block))
+    return found
+
+
+def test_the_suite_step_is_executed_and_not_merely_written(tmp_path: Path) -> None:
+    """OBSERVED: an interpreter is entered, at the top level, with `-m pytest`.
+
+    `check_the_suite_runs_as_a_whole_command` says the line READS as a command.
+    This says it RAN: the block goes through the stub harness with nothing set
+    to fail, and the invocation log must show `python -m pytest`. `:`, `echo`
+    and `true` are builtins the harness leaves real, so a line that hides the
+    suite behind one of them records no invocation at all — the difference a
+    rule about text cannot see, and the reason the gate has this test too.
+    """
+    steps = _suite_step_blocks()
+    assert steps, (
+        "No step in .github/workflows runs the suite, so this test observed "
+        "nothing. An absence is not a pass."
+    )
+    for workflow_name, step_name, block in steps:
+        result = run_block_under_stubs(block, set(), tmp_path)
+        assert not result.unmodelled, (
+            f"{workflow_name}: step {step_name!r} used commands the harness "
+            f"could not model ({result.unmodelled}), so its verdict is not "
+            "about the suite."
+        )
+        invoked = [
+            entry for entry in result.invocations
+            if entry.split()[0] in PYTHON_INTERPRETERS
+            and entry.split()[1:3] == ["-m", SUITE_MODULE]
+        ]
+        assert invoked, (
+            f"{workflow_name}: step {step_name!r} completed without entering "
+            f"{sorted(PYTHON_INTERPRETERS)} with `-m {SUITE_MODULE}`. Top-level "
+            f"invocations recorded: {result.invocations}. The suite is written "
+            "in this step and this step does not run it."
+        )
+
+
+@pytest.mark.parametrize(
+    "line",
+    [
+        ': python -m pytest -q -rs --junit-xml="$RUNNER_TEMP/junit.xml"',
+        'echo python -m pytest -q -rs --junit-xml="$RUNNER_TEMP/junit.xml"',
+    ],
+    ids=["colon", "echo"],
+)
+def test_the_executed_suite_rule_sees_a_suite_that_did_not_run(
+    tmp_path: Path, line: str
+) -> None:
+    """The synthetic bad input for the observation above. A log that is never
+    empty proves nothing by being non-empty."""
+    result = run_block_under_stubs(line, set(), tmp_path)
+    invoked = [
+        entry for entry in result.invocations
+        if entry.split()[0] in PYTHON_INTERPRETERS
+        and entry.split()[1:3] == ["-m", SUITE_MODULE]
+    ]
+    assert not invoked, (
+        f"The harness recorded {result.invocations} for {line!r}. That line "
+        "runs a builtin with the suite as an argument; if the suite shows up "
+        "as invoked, the invocation log cannot tell a run suite from a "
+        "mentioned one."
     )
 
 
@@ -5153,12 +5390,12 @@ def test_the_gate_step_is_executed_and_not_merely_written(tmp_path: Path) -> Non
         )
         invoked = [
             entry for entry in result.invocations
-            if entry.split()[0] in GATE_INTERPRETERS
+            if entry.split()[0] in PYTHON_INTERPRETERS
             and entry.split()[1:2] == [GATE_SCRIPT_PATH]
         ]
         assert invoked, (
             f"{workflow_name}: step {step_name!r} completed without entering "
-            f"{sorted(GATE_INTERPRETERS)} with {GATE_SCRIPT_PATH} as its first "
+            f"{sorted(PYTHON_INTERPRETERS)} with {GATE_SCRIPT_PATH} as its first "
             f"argument. Top-level invocations recorded: {result.invocations}. "
             "The gate is written in this step and this step does not run it."
         )
@@ -5183,7 +5420,7 @@ def test_the_executed_gate_rule_sees_a_gate_that_did_not_run(
     result = run_block_under_stubs(line, set(), tmp_path)
     invoked = [
         entry for entry in result.invocations
-        if entry.split()[0] in GATE_INTERPRETERS
+        if entry.split()[0] in PYTHON_INTERPRETERS
         and entry.split()[1:2] == [GATE_SCRIPT_PATH]
     ]
     assert not invoked, (

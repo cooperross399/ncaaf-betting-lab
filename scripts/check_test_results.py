@@ -70,8 +70,10 @@ That is the shape of this half of the gate and it is worth saying plainly:
 `--deselect tests/test_no_secrets_committed.py::test_no_tracked_file_assigns_a_
 real_credential`, written into `addopts` in pyproject.toml, removed one
 hard-rule credential guard and this script exited 0 — measured on this
-repository at 4454b20, `527 passed, 1 deselected`. The module was still there
-and still contributed hundreds of testcases, so nothing here could object.
+repository at 4454b20 under `python -m pytest -q --junit-xml=<path>` followed by
+this script on that path: one test deselected, the rest of the suite passing.
+The module was still there and still contributed hundreds of testcases, so
+nothing here could object.
 
 Nothing here CAN object, and the reason is structural rather than an oversight
 to fix later: the evidence file records the tests that ran and never the ones

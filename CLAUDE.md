@@ -61,8 +61,9 @@ it refuses a run that arrived NARROWED (`addopts`, `PYTEST_ADDOPTS`,
 in a command line), and it compares the test functions each required guard
 module defines against the ones pytest is still holding. That hole was measured
 rather than supposed: `--deselect` on one credential guard, written into
-`addopts`, gave `527 passed, 1 deselected` and the junit gate exited 0, because
-the evidence file records what ran and never what the configuration removed. Note the
+`addopts`, left that guard out of the run with everything else passing and the
+junit gate exited 0, because the evidence file records what ran and never what
+the configuration removed. Note the
 shape of that xpass clause: `xfail_strict = true` in `pyproject.toml` sets the
 DEFAULT and only the default. A marker overrides it per test, and the xpass of
 a test marked `xfail(strict=False)` reaches the XML as a bare `<testcase/>` no
@@ -77,10 +78,22 @@ recorded at all. The first is why the flag is a dependency; the second is a
 flag that disarms a gate rather than narrowing a run. An earlier revision of
 this paragraph, and of tests.yml's header, said no rule sorted `--runxfail`
 into any banned set. That was false when it was written: it is in
-`NARROWING_PYTEST_LONG_FLAGS` in `tests/test_workflows.py` and has always been
-rejected. The suite line is now a WHITELIST — `-q`, `-rs` and one junit path
-under `$RUNNER_TEMP` — so which disarming flags anybody remembered to enumerate
-no longer decides anything.
+`NARROWING_PYTEST_LONG_FLAGS` in `tests/test_workflows.py`, and it has been
+there since that file was written — both arrived in `4454b20`. The sentence
+that replaced it overclaimed the other way, so here is the width each rule
+really has, run at `5072f97` rather than asserted. ON the pytest command line
+the arguments are a whitelist — `-q`, `-rs`, one junit path under
+`$RUNNER_TEMP` — so a flag nobody enumerated is rejected for not being on the
+list; and the words in front of `pytest` are pinned as a whole command
+separately, because until they were, `: python -m pytest …` and
+`PYTEST_PLUGINS=disarm python -m pytest …` in the real `tests.yml` left every
+test in that file passing. OFF the command line the whitelist decides nothing: `addopts` and
+`PYTEST_ADDOPTS` reach pytest as if typed, and what refuses them is the root
+`conftest.py` refusing BOTH channels wholesale — any value at all, so
+`PYTEST_ADDOPTS=--runxfail` and `addopts = "--runxfail"` each exit 1 before a
+test runs. A plugin loaded into the run is neither, and gap 5 in
+`tests/test_the_guards_exist.py::test_known_gaps_that_still_get_through` names
+the shape of it that is still open.
 
 This paragraph used to promise that two skips would resolve themselves. They did
 resolve, but not for the stated reason, and one of the reasons was never true:
