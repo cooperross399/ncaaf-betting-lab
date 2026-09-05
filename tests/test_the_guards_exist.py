@@ -857,11 +857,17 @@ def test_a_guard_test_removed_after_collection_is_not_a_pass(tmp_path: Path) -> 
             "test_other.py": "def test_something_else() -> None:\n    assert True\n",
         },
     )
-    (root / "lateplug.py").write_text(
+    # The hook goes in a NON-ROOT conftest inside the tree, which pytest loads
+    # by itself. `-p lateplug` was the first attempt and it passed here for the
+    # wrong reason: a `lateplug` distribution left installed in the developer's
+    # venv satisfied the import, so the test was green locally and red on a
+    # clean runner, which is the exact shape of "a test that runs on one
+    # machine". Nothing is installed now and nothing needs to be.
+    (root / "tests" / "conftest.py").write_text(
         textwrap.dedent(LATE_DESELECT_PLUGIN), encoding="utf-8"
     )
 
-    done = _run_pytest(root, "-p", "lateplug")
+    done = _run_pytest(root)
 
     assert done.returncode == 1, (
         "A guard test deselected after collection left pytest reporting "
