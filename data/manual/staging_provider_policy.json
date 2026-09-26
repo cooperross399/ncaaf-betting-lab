@@ -1,0 +1,73 @@
+{
+  "_comment": [
+    "This file decides which provider and which markets the card may",
+    "use, per league. It ships allowlisting NOTHING, and that is the",
+    "correct state until a market has been measured against real",
+    "prices and Cooper has reviewed the evidence and signed a human",
+    "acceptance receipt.",
+    "",
+    "THE ENTRY BELOW IS A PREPARED PROPOSAL AND ALLOWLISTS NOTHING.",
+    "allowlist_status is 'proposed', the reviewer and receipt fields",
+    "are empty, and no receipt exists on disk, so market_allowed()",
+    "returns False for every market named in it. The market list is",
+    "the request; it is not the decision.",
+    "",
+    "Entries are keyed `{provider}:{league}`. Approving a market in",
+    "the NFL never approves it in NCAAF.",
+    "",
+    "Claude may prepare a change to this file and open a pull request",
+    "for it. Claude may never add a provider, add a market, or write a",
+    "receipt. See docs/provider_allowlist_approval.md."
+  ],
+  "allowed_provider_names": [],
+  "provider_allowlist_entries": {
+    "the_odds_api:ncaaf": {
+      "allowlist_status": "proposed",
+      "approved_at": "",
+      "reviewer_name": "",
+      "evidence_receipt_id": "",
+      "required_markets": [
+        "moneyline",
+        "spread",
+        "total_points",
+        "alternate_spread",
+        "alternate_total_points",
+        "team_total",
+        "alternate_team_total",
+        "moneyline_h1",
+        "spread_h1",
+        "total_points_h1"
+      ],
+      "known_limitations": [
+        "=== THIS ENTRY ALLOWLISTS NOTHING AS COMMITTED ===",
+        "It is a PREPARED PROPOSAL, not an approval. allowlist_status is 'proposed', reviewer_name and evidence_receipt_id are empty, and no receipt exists under data/manual/human_acceptance_receipts/. AllowlistEntry.is_allowed is therefore False on three independent counts and market_allowed() returns False for all ten markets below. Claude prepared this and stopped; see docs/provider_allowlist_approval.md. What would make it live is Cooper reviewing the evidence, signing a human acceptance receipt, and completing the three fields \u2014 all four of which are his, and none of which Claude may do.",
+        "REQUESTED BY THE REPOSITORY OWNER, 2026-09-25, in these words: 'i want every market allowlisted. If it never produces a pick then so be it but i want it to try.' Recorded verbatim because the reason for a proposal is part of the evidence. It is a decision to run the card forward and accumulate a live record; it is NOT a claim that an edge exists, and nothing below should be read as one.",
+        "=== WHAT THE EVIDENCE ACTUALLY SAYS ===",
+        "PROPOSED AGAINST THE EVIDENCE BUNDLE'S OWN DEFAULT VERDICT. No evidence bundle exists: reports/allowlist_evidence.py can render one, but no script drives it and its inputs (steps 1-3 of docs/provider_allowlist_approval.md) have never been run. That renderer's honest default is 'not supported', and with zero measurements against real prices every one of the ten markets below would receive it. This proposal is made against that default for all ten.",
+        "NO PROVIDER FETCH HAS EVER RUN. Nothing has been asked of The Odds API, no price has been bought, no event id is cached, data/staging/ is absent. Every market below is recorded as never fetched, because it has never been fetched.",
+        "EVERY MARKET IS UNPROBED. markets.py records retained=None for all ten. No book has been observed quoting any of these for college football. None means unknown \u2014 not available, and not unavailable.",
+        "NO MARKET HAS BEEN MEASURED AGAINST A BOUGHT PRICE. The only priced history this lab holds is the free cfbfastR archive, which carries moneyline prices and no spread odds at all. Whether The Odds API retains a historical archive for any of these markets in college football is UNKNOWN and unprobed; no claim is made here in either direction.",
+        "THE ONLY PRICING MODEL IS models/margin.py, AND IT IS KNOWN TO OVER-DISPERSE. It carries a dispersion of 20.45 points at implied margin 0 rising to 21.92 at implied margin 21, against a realised residual dispersion of 15.3 (n = 3,864, CI [14.81, 15.77] at the x1.395 correction then in force). Its held-out advantage over a normal is bought entirely by scale and not by shape: on n = 797 held-out games the shape adds -0.0105 nats/game against a correctly-scaled normal, below a detectable floor of 0.047. This is a live defect, not a historical one, and every model-priced market inherits it.",
+        "MULTIPLICITY: any new 95% interval must be widened by x1.76 for the 92 distinct hypotheses in data/outputs/experiment_ledger.json (rendered in data/outputs/experiment_ledger.md). Note that CLAUDE.md's figures of 78 hypotheses and x1.742 are STALE \u2014 they predate the opener study \u2014 and the ledger is the record, not the prose.",
+        "=== ALLOWLISTED IS NOT ABLE-TO-PICK ===",
+        "THERE IS NO CARD AND NO SELECTION PIPELINE, so on the day a receipt is signed all ten markets remain hard-gated from producing a selection by the absence of the pipeline itself. Nothing in src/ or scripts/ calls market_allowed(), StagingProviderPolicy, or allowed_markets() \u2014 the policy has no consumers. Two modules that a card would need do not even import: src/ncaaf_betting_lab/selection.py raises ModuleNotFoundError for ncaaf_betting_lab.season, and src/ncaaf_betting_lab/reports/clv.py raises ModuleNotFoundError for ncaaf_betting_lab.forward_evidence. Both are pre-existing and neither is caught by the suite, because no test imports either module and compileall does not execute imports.",
+        "FOUR OF THE TEN ARE TIER 2 (alternate_team_total, moneyline_h1, spread_h1, total_points_h1) and are excluded from the default fetch by bulk_provider_keys(tier=1) / per_event_provider_keys(tier=1). Allowlisting them does not cause them to be asked for.",
+        "SIX OF THE TEN HAVE NO PRICING MODEL AT ALL (total_points, alternate_total_points, team_total, alternate_team_total, moneyline_h1, total_points_h1, plus spread_h1 at the half). Only the margin-priced markets \u2014 spread and alternate_spread, and moneyline by derivation from the same margin distribution \u2014 have any pricing path, and that path is the over-dispersing one described above.",
+        "=== COST ===",
+        "daily_credit_cap is 4,000 and is marked PROVISIONAL in leagues.py \u2014 it has never been derived from a real college schedule against a real market list. Allowlisting all ten markets makes it load-bearing: seven of them are per-event, billed as unique markets RETURNED x regions, on Saturdays that can carry sixty games. A cap set below the worst slate starves the fetch part-way through the alphabet, and in the reports that is INDISTINGUISHABLE from a market nobody quoted. Derive the cap before the first live run, or the first forward record will contain a coverage artefact read as a finding.",
+        "Credit spend is Cooper's decision with the number agreed BEFORE it is spent, and today no budget is agreed at all. This proposal does not authorise a spend and does not estimate one.",
+        "=== PER MARKET ===",
+        "moneyline \u2014 NEVER FETCHED (no provider call has ever been made); retained=None (unprobed). MEASURED, AND NEGATIVE: betting this lab's own model's +EV moneylines at posted prices returned -9.2% over 6,128 bets while the model claimed +24.4% (data/outputs/ncaaf_steps_2_to_5.md). A narrower pre-registered cut \u2014 underdog moneylines at abs(spread) 3-10 \u2014 returned ROI -5.17% over 2,912 bets, interval [-16.05%, +5.71%] at the x1.395 correction then in force, against a claimed EV of +6.1%. Both are posted prices from the free cfbfastR archive, NOT bought provider prices. No positive measurement exists for this market at any sample size.",
+        "spread \u2014 NEVER FETCHED; retained=None. NEVER MEASURED AGAINST A REAL PRICE: the free archive carries no spread odds at all (100% NaN for market_type='spread', 2021-25), so a spread ROI cannot be computed from the priced history this lab holds. What exists is FORECAST SKILL ONLY, and it points the wrong way for a bettor: the pre-registered positive control has the close beating the open by D = +3.5636 pts^2, n = 3,851 games over 76 (season, week) clusters, corrected interval [+0.3386, +6.7885] (data/outputs/opener_study.md). That is evidence the closing line is sharp, which is a reason to expect no edge rather than one. Priced by models/margin.py and inherits its over-dispersion.",
+        "total_points \u2014 NEVER FETCHED; retained=None. NEVER MEASURED AGAINST A REAL PRICE. HARD-GATED: NO PRICING MODEL EXISTS. models/margin.py prices the margin and nothing else, so this lab cannot currently form an opinion on a total at all; allowlisting it cannot produce a selection until a totals model is built. Forecast skill only, and unregistered: close beats open by D = +4.8750 pts^2, n = 3,862 over 77 clusters \u2014 again evidence the close is sharp.",
+        "alternate_spread \u2014 NEVER FETCHED; retained=None. NEVER MEASURED AGAINST A REAL PRICE, and it cannot be measured from the history this lab holds, which carries no spread odds at any rung. Priced by models/margin.py. BY CONSTRUCTION RATHER THAN BY MEASUREMENT, this is the market where that model's over-dispersion does the most damage: an over-dispersed margin distribution puts too much mass in both tails, and the alternate ladder's rungs are precisely the far-from-the-line prices that mass is spent on. The one market where the same model was scored end to end against posted prices \u2014 moneyline, above \u2014 it claimed +24.4% and lost 9.2% over 6,128 bets.",
+        "alternate_total_points \u2014 NEVER FETCHED; retained=None. NEVER MEASURED AGAINST A REAL PRICE. HARD-GATED: no totals model exists, so no rung of this ladder can be priced or selected.",
+        "team_total \u2014 NEVER FETCHED; retained=None. NEVER MEASURED AGAINST A REAL PRICE. HARD-GATED: no team-score model exists. models/margin.py deliberately does NOT model the two team scores \u2014 it tilts an empirical MARGIN distribution, because convolving two team-score distributions annihilates the key numbers (measured in the NFL lab: P(|margin|=3) 6.19% modelled against 14.65% realised, n=2,895). A team total needs the very quantity that design declines to model.",
+        "alternate_team_total \u2014 NEVER FETCHED; retained=None. NEVER MEASURED AGAINST A REAL PRICE. HARD-GATED TWICE: no team-score model exists (see team_total), and it is tier=2 in markets.py, so it is excluded from the default fetch by per_event_provider_keys(tier=1) and would not be asked for even once a fetch is built.",
+        "moneyline_h1 \u2014 NEVER FETCHED; retained=None. NEVER MEASURED AGAINST A REAL PRICE. HARD-GATED TWICE: no first-half model exists (models/margin.py is built from full-game margins), and it is tier=2, so the default fetch does not ask for it. Additional unmeasured risk recorded in markets.py: a half CAN end level \u2014 the overtime rule does not apply to it \u2014 and the NFL lab priced a level half at 0.4% until that was fixed. The college rate of level halves has never been measured here, and it is not zero.",
+        "spread_h1 \u2014 NEVER FETCHED; retained=None. NEVER MEASURED AGAINST A REAL PRICE. HARD-GATED TWICE: no first-half model exists \u2014 models/margin.py is fitted on full-game margins and its key-number mass (college 3 at 10.02%, 7 at 8.22%, measured over 1,606 FBS-vs-FBS games 2024-25) is a full-game shape that must not be assumed to hold at the half \u2014 and it is tier=2, so the default fetch does not ask for it.",
+        "total_points_h1 \u2014 NEVER FETCHED; retained=None. NEVER MEASURED AGAINST A REAL PRICE. HARD-GATED TWICE: no totals model exists at any period, and it is tier=2, so the default fetch does not ask for it."
+      ]
+    }
+  }
+}
