@@ -292,6 +292,20 @@ failed tests as exploratory; the failed tests are exactly what make a surviving
 one unlikely to be chance. Re-running the same hypothesis on the same seasons
 is one degree of freedom, not two.
 
+**Do not force-push a branch that has an open PR here.** Measured on PR #6 on
+2026-09-26 rather than reasoned about. `Ledger Guard` resolves its base from the
+`push` event's before-sha, and a force-push names a commit that no longer exists
+on the remote, so `git cat-file -e` on it fails and the workflow **fails closed**
+— correctly, and saying so: *"the append-only check did not run. This is a
+broken guard, NOT evidence that the ledger is intact."* The `pull_request`-
+triggered run on the identical tree passes, because it resolves from the PR base
+instead, so the PR ends up carrying one green `append_only` and one red one, and
+`mergeStateStatus` goes from `CLEAN` to `BLOCKED`.
+
+Re-running the failed job does not clear it: the replayed event carries the same
+dead before-sha. What clears it is an ordinary non-force push on top, whose
+before-sha exists. So amend freely before the first push and never after it.
+
 **A null is only evidence if the instrument could have seen the effect.**
 Report the detectable floor beside the result. A design that cannot resolve a
 true +2% will return "no demonstrated edge" whether or not one is there, with
