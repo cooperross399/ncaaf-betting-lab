@@ -23,8 +23,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 
-#: All 32 clubs, or the feed is missing teams rather than merely being thin.
-#: Read from the league registry by the caller — never hardcoded here.
 OK = "current"
 STALE = "STALE"
 MISSING = "MISSING"
@@ -44,6 +42,13 @@ class FeedState:
     reaches_week: int | None
     expected_week: int | None
     clubs: int
+    #: Every club the league has, or the feed is missing teams rather than
+    #: merely being thin. **Supplied by the caller from the league registry,
+    #: never a literal here.** This carried the comment "All 32 clubs" through
+    #: the port, which is the NFL's number: an FBS season names about 134, so a
+    #: hardcoded 32 would have read a feed missing a hundred teams as complete.
+    #: The field is right and only the comment was wrong, but a wrong comment
+    #: above a right field is how the next person writes the literal.
     expected_clubs: int
     due: bool = True
 
@@ -93,10 +98,13 @@ def expected_week(day_to_week: dict[str, int], as_of: date) -> int | None:
     and every one of them read as stale. Counting the wrong unit is the kind of
     fault that produces a plausible number rather than an error.
 
-    From the schedule rather than from a calendar rule: the NFL week does not
-    start on a fixed weekday. Week 1 2026 opens on a Wednesday because
-    Thursday's game is in Australia, and a rule that assumed otherwise would
-    ask for a feed a day early every time a slate moved.
+    From the schedule rather than from a calendar rule, and college football
+    needs that even more than the league this was ported from. There is a
+    **Week 0**; midweek MAC games kick on Tuesday and Wednesday; Friday slates
+    are ordinary. So a week here has no fixed opening weekday at all, and a
+    rule that assumed one would ask for a feed a day early every time a slate
+    moved. cfbfastR's schedule carries the `week` column, so the schedule is
+    asked rather than inferred from.
     """
     played = [w for day, w in day_to_week.items() if day <= as_of.isoformat()]
     return max(played) if played else None
@@ -151,7 +159,7 @@ def render(result: FreshnessResult) -> str:
             "**Each blocking feed names its own consequence above**, because "
             "'refresh the feeds' is not an instruction anyone can act on at "
             "07:00 on a game day. Fetch with "
-            "`scripts/fetch_football_data.py --seasons <season>`."
+            "`scripts/fetch_ncaaf_data.py --seasons <season>`."
         )
         add("")
     add(

@@ -207,6 +207,29 @@ machinery ports; the findings do not.** A shared or hierarchical model across
 labs is not forbidden, it is unproven, and it would require two repositories to
 exchange data, which today they do not.
 
+**The port carried findings anyway, and the way it did is worth knowing.** Every
+report module here is byte-identical to the NFL lab's, which is the rule working
+— but the prose inside them came too, and prose is where the findings live. Four
+modules stated that lab's measured numbers as this lab's, one of them **in
+rendered report output**: `slate_coverage.py` told a reader of an NCAAF report
+that the season is "272 games across 57 game days", which is the NFL's regular
+season. Alongside them, three modules named paths this repository does not have,
+including a rendered instruction to run `fetch_football_data.py` and a citation
+of the six-step approval procedure — for the action Claude may never take —
+which had not been ported at all.
+
+So the rule to apply when porting is narrower than "change the package name":
+**a rendered string may never state another league's measurement as this
+league's, and a docstring that cites one must say whose it is.** Citing the
+sibling labs' experience is wanted, because it is why the machinery is shaped
+the way it is; presenting it as evidence about college football is the thing
+banned above. `tests/test_no_dangling_file_references.py` catches the missing
+paths, because a referent either exists or does not. **Nothing catches a wrong
+number in ported prose** — that was found by reading, and the next one will be
+too. A guard matching NFL-shaped figures would be the spelling rule this
+repository has twice recorded as defeated by a rewording, and it is not
+attempted.
+
 The mechanical consequence is that league facts live in `leagues.py` and
 nowhere else. `tests/test_league_registry_is_the_only_place.py` fails the build
 on a league key or a sport-key prefix used as a value outside the registry. The
