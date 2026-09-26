@@ -1,0 +1,18 @@
+{
+  "_comment": [
+    "This file decides which provider and which markets the card may",
+    "use, per league. It ships allowlisting NOTHING, and that is the",
+    "correct state until a market has been measured against real",
+    "prices and Cooper has reviewed the evidence and signed a human",
+    "acceptance receipt.",
+    "",
+    "Entries are keyed `{provider}:{league}`. Approving a market in",
+    "the NFL never approves it in NCAAF.",
+    "",
+    "Claude may prepare a change to this file and open a pull request",
+    "for it. Claude may never add a provider, add a market, or write a",
+    "receipt. See docs/provider_allowlist_approval.md."
+  ],
+  "allowed_provider_names": [],
+  "provider_allowlist_entries": {}
+}

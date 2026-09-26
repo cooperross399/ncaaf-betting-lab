@@ -277,7 +277,9 @@ write a human acceptance receipt, add a name to `allowed_provider_names`, or
 add a market to `required_markets`. Its honest default is *not supported*, and
 the policy is fail-closed by design: a missing, unreadable or malformed file, a
 wrong-league entry, an allowlist entry with no reviewer or no receipt id, or a
-receipt named but not present on disk all resolve to **not allowed**. Approving
+receipt named but not present on disk, a receipt that does not name the
+market in its own `approved_markets`, or one for another league all resolve to
+**not allowed**. Approving
 a market for one league approves it for no other — the entries are keyed
 `{provider}:{league}` so a policy file cannot express "allowed everywhere" even
 by accident. Cooper signs or does not.

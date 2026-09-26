@@ -11,6 +11,8 @@ every failure mode here resolves to "not allowed":
 * market absent from `required_markets` -> not allowed
 * allowlist entry without a reviewer and a receipt id -> not allowed
 * receipt file named but not present on disk -> not allowed
+* receipt unreadable, or for another league, or naming another id -> not allowed
+* market absent from the receipt's own `approved_markets` -> not allowed
 
 That is the whole design. A policy loader that returns a permissive default on
 an unreadable file is a policy loader that stops existing the moment something
@@ -35,6 +37,7 @@ paperwork on every policy change.
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -46,6 +49,10 @@ from ncaaf_betting_lab.markets import MARKETS_BY_KEY
 
 POLICY_FILENAME = "staging_provider_policy.json"
 RECEIPTS_DIRNAME = "human_acceptance_receipts"
+
+#: A receipt id becomes a filename. Anything outside this could climb out of
+#: the receipts directory, and a receipt read from elsewhere is not a receipt.
+RECEIPT_ID_PATTERN = re.compile(r"[A-Za-z0-9._-]+")
 
 #: The one provider this lab is built around. Naming it here does not allow
 #: it; the policy file does that, and it does not.
@@ -148,7 +155,83 @@ class StagingProviderPolicy:
         return self.entries.get(league.policy_key())
 
     def receipt_path(self, entry: AllowlistEntry) -> Path:
-        return self.manual_dir / RECEIPTS_DIRNAME / f"{entry.evidence_receipt_id}.md"
+        return self.manual_dir / RECEIPTS_DIRNAME / f"{entry.evidence_receipt_id}.json"
+
+    def load_receipt(self, entry: AllowlistEntry) -> tuple[dict[str, Any] | None, str]:
+        """The receipt an entry cites, opened and read, or why it could not be.
+
+        Opened, not merely found. A receipt that only had to exist approved
+        whatever the policy file said it approved: a file containing the word
+        "signed" was as good as a reviewed decision, and so was a real receipt
+        for two markets sitting under an entry that lists twenty.
+        """
+        identifier = entry.evidence_receipt_id.strip()
+        if not RECEIPT_ID_PATTERN.fullmatch(identifier):
+            return None, f"receipt id {identifier!r} is not a safe filename"
+        path = self.receipt_path(entry)
+        if not path.is_file():
+            return None, (
+                f"the approval names receipt `{identifier}` but no such file "
+                f"exists at {path}. An id pointing at nothing is not an approval"
+            )
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            return None, f"receipt `{identifier}` could not be read: {exc}"
+        if not isinstance(payload, dict):
+            return None, f"receipt `{identifier}` is not a JSON object"
+        return payload, ""
+
+    def checked_receipt(
+        self, entry: AllowlistEntry
+    ) -> tuple[dict[str, Any] | None, str]:
+        """The receipt, if it can stand behind this entry; else why not.
+
+        What the card checks on every run. The PR gate
+        (`reports/policy_pr_gate.py`) checks this and more - the reviewer's
+        statement, the review time, the evidence checksums - because those
+        are properties of the paperwork, and the paperwork only changes in a
+        pull request.
+        """
+        payload, error = self.load_receipt(entry)
+        if payload is None:
+            return None, error
+        problem = self._receipt_field_problem(entry, payload)
+        return (None, problem) if problem else (payload, "")
+
+    def _receipt_field_problem(
+        self, entry: AllowlistEntry, payload: dict[str, Any]
+    ) -> str:
+        identifier = entry.evidence_receipt_id
+        if str(payload.get("receipt_id", "")).strip() != identifier:
+            return (
+                f"receipt file `{identifier}.json` names itself "
+                f"{payload.get('receipt_id')!r}. A receipt copied under a new "
+                "name is not the receipt the approval cites"
+            )
+        if str(payload.get("policy_key", "")).strip() != entry.policy_key:
+            return (
+                f"receipt `{identifier}` approves {payload.get('policy_key')!r}, "
+                f"not `{entry.policy_key}`. One receipt, one league"
+            )
+        if not str(payload.get("reviewer_name", "")).strip():
+            return f"receipt `{identifier}` names no reviewer"
+        approved = payload.get("approved_markets")
+        if not isinstance(approved, list) or not all(
+            isinstance(item, str) for item in approved
+        ):
+            return f"receipt `{identifier}` needs `approved_markets` as a list of keys"
+        return ""
+
+    def receipt_problem(self, entry: AllowlistEntry) -> str:
+        return self.checked_receipt(entry)[1]
+
+    def receipt_approves(self, entry: AllowlistEntry, market: str) -> bool:
+        # One read: the list checked is the list used.
+        payload, _ = self.checked_receipt(entry)
+        if payload is None:
+            return False
+        return market in {item.strip() for item in payload["approved_markets"]}
 
     def market_allowed(self, league: League, market: str) -> bool:
         """The one question the card asks. Every path out of it is explicit."""
@@ -165,9 +248,10 @@ class StagingProviderPolicy:
             return False
         if key not in entry.required_markets:
             return False
-        # The receipt must exist on disk, not merely be named. An id pointing
-        # at nothing is the shape a fabricated approval takes.
-        return self.receipt_path(entry).is_file()
+        # The receipt must be opened and must itself approve this market.
+        # The policy's market list is what someone wants; the receipt's is
+        # what Cooper signed, and only their overlap is allowed.
+        return self.receipt_approves(entry, key)
 
     def refusal_reason(self, league: League, market: str) -> str:
         """Why a market is not allowed, in words a card can print."""
@@ -223,12 +307,15 @@ class StagingProviderPolicy:
                 f"`{entry.evidence_receipt_id}`). Measurement and a signed "
                 "human acceptance receipt are what add a market; nothing else."
             )
-        path = self.receipt_path(entry)
-        if not path.is_file():
+        problem = self.receipt_problem(entry)
+        if problem:
+            return f"{problem[0].upper()}{problem[1:]}."
+        if not self.receipt_approves(entry, key):
             return (
-                f"The approval names receipt `{entry.evidence_receipt_id}` but "
-                f"no such file exists at {path}. An id pointing at nothing is "
-                "not an approval."
+                f"`{key}` is in the policy's list for `{league.policy_key()}` "
+                f"but not in the `approved_markets` of receipt "
+                f"`{entry.evidence_receipt_id}`. A market list widened after "
+                "signing is not an approval."
             )
         return ""
 
