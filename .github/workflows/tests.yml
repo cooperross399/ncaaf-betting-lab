@@ -221,21 +221,59 @@ jobs:
           python -m pip freeze | tee "$RUNNER_TEMP/resolved-versions.txt" >> "$GITHUB_STEP_SUMMARY"
           echo '```' >> "$GITHUB_STEP_SUMMARY"
 
-      # Modules under src/ that NO test imports are what this step is for.
-      # Every module under reports/ is in that set, along with verdicts,
-      # markets, selection, staging_provider_policy, kickoff, team_names and
-      # experiment_ledger. config is NOT: tests/test_no_secrets_committed.py
-      # imports PROJECT_ROOT from it. No count precedes that list any more — a
-      # count stood here and disagreed with its own enumeration, which is the
-      # same decay as a stale test total and is refused for the same reason.
-      # A module can be syntactically broken and the whole suite still pass;
-      # the EPL lab had one broken that way for over a month.
+      # Modules under src/ whose BEHAVIOUR no test exercises are what this step
+      # is for. Every module under reports/ is in that set, along with
+      # verdicts, markets, staging_provider_policy, kickoff, team_names and
+      # experiment_ledger. selection came off that list when season.py was
+      # ported and tests/test_season.py drove selection_key through it. config
+      # was never on it:
+      # tests/test_no_secrets_committed.py imports PROJECT_ROOT from it. No
+      # count precedes that list any more — a count stood here and disagreed
+      # with its own enumeration, which is the same decay as a stale test total
+      # and is refused for the same reason. A module can be syntactically
+      # broken and the whole suite still pass; the EPL lab had one broken that
+      # way for over a month.
       #
-      # Two things in this repository read those files: this step, and
+      # THIS STEP STOPS AT THE PARSE, and the gap that leaves was measured on
+      # this repository rather than imagined. `compileall` byte-compiles a
+      # module WITHOUT executing its import statements, so a file that parses
+      # and raises ModuleNotFoundError on import is green here. Two did:
+      # selection.py imported a `season` module that was never ported, and
+      # reports/clv.py imported a `forward_evidence` module that was never
+      # ported either. The suite passed over both with zero skips, because no
+      # test imported either file.
+      #
+      # tests/test_every_module_imports.py is what closes that half. It walks
+      # BOTH roots this step compiles and runs a child interpreter holding one
+      # literal `import X` statement per module found. A child, and static
+      # statements, because tests/test_no_sibling_lab_import.py refuses
+      # importlib.import_module anywhere under src/, scripts/ or tests/ — a
+      # dynamic import is one its sibling-lab scan cannot follow — and that
+      # rule keeps its full reach here rather than gaining an exemption. The
+      # guard is in the gate's REQUIRED_MODULES, so deleting it is red.
+      #
+      # scripts/ is in that walk because importing one of these files runs
+      # nothing: every script here guards its work behind
+      # `if __name__ == "__main__"`, which the guard re-checks on every run by
+      # importing them — a script that stopped doing so would start doing its
+      # work inside the suite and be caught at once.
+      #
+      # SO THIS STEP IS NOW LARGELY SUBSUMED, and saying so is better than
+      # inventing a distinction for it: a module that will not import is a
+      # superset of one that will not parse, over exactly these two roots. It
+      # is kept because it is cheap, because it runs BEFORE the suite, and
+      # because it does not depend on pytest collecting anything — which is the
+      # failure mode tests/test_the_guards_exist.py exists for. A guard that
+      # only reports through the suite is a guard a narrowed suite can silence.
+      #
+      # Three things in this repository read every file under src/: this step;
       # tests/test_league_registry_is_the_only_place.py, which ast.parses every
       # one of them hunting league literals and therefore raises on a syntax
-      # error too. Both catch a syntax error and nothing else. Neither is a
-      # substitute for the tests these modules still need.
+      # error too; and the import guard named above. The first two catch a
+      # syntax error and nothing else, the third catches an import error, and
+      # none of the three is a substitute for the tests these modules still
+      # need. An import that succeeds says the file loads, and says nothing
+      # whatever about whether what it loaded is right.
       #
       # The existence check is the gate, not decoration. `compileall` prints
       # "Can't list 'src'" and EXITS 0 when a path argument names nothing

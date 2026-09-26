@@ -44,8 +44,11 @@ no key, no rate limit) with schedules for 2021-2026 cached under `data/raw/`.
 The league registry, the market registry, the fail-closed provider policy
 loader, the coverage precondition, the kickoff guard, `selection_key()`, the
 margin model, the power and positive-control instruments, the append-only
-experiment ledger, and seven report modules. Two workflows: `Tests` and
-`Ledger Guard`. **The suite passes with ZERO skips** on a clean
+experiment ledger, and six report modules. Two workflows: `Tests` and
+`Ledger Guard`. **Every module under `src/` and `scripts/` imports** — a weaker
+claim than it looks, and one that was false until it was enforced; see below.
+**The suite
+passes with ZERO skips** on a clean
 requirements-only clone — no count is written here, because the count moves
 whenever a guard gains a case and a stale absolute is worse than no number.
 That property is enforced rather than reported, in two places.
@@ -100,6 +103,33 @@ resolve, but not for the stated reason, and one of the reasons was never true:
 `.gitignore` makes `data/raw/` untrackable, so the event-id skip could not have
 been cleared by a provider fetch. **No skip resolves itself. A skip is resolved
 by someone writing the thing.**
+
+And a green suite was never a claim that the package imports. Two modules under
+`src/` raised `ModuleNotFoundError` while the suite passed over both with zero
+skips, because **no test imported either one** and the two things that read
+every file under `src/` both stop at the parse: `compileall` byte-compiles a
+module without executing its imports, and
+`tests/test_league_registry_is_the_only_place.py` uses `ast.parse`. Neither can
+see a file that parses and will not load. `selection.py` imported a `season`
+module that was never ported — so `selection_key()` was listed above as
+existing while it could not be imported, which is the shape of overstatement
+this section exists to prevent — and `reports/clv.py` imported a
+`forward_evidence` module that was never ported either, with
+`reports.props_backtest` missing behind it. `season.py` was ported (its
+calendar and text half only; `data/cfbfastr.py` already owns schedule loading
+here). `clv.py` was **removed**: it was a byte-identical copy of the NFL lab's,
+it needed a props backtest this lab has ruled out of scope, and it carried that
+lab's measured numbers — 272 games, 55.7% of wagers unmoved — as if they were
+this league's, which the pooling rule forbids outright.
+`tests/test_every_module_imports.py` is what makes the next one red instead of
+invisible; it is in the gate's `REQUIRED_MODULES`, so deleting it is red too.
+It walks `scripts/` as well as `src/` — every script guards its work behind
+`if __name__ == "__main__"`, so importing one runs nothing, and a script that
+stopped doing so would start doing its work inside the suite and be caught at
+once. It is a floor and not coverage: it asserts that a module loads and
+nothing about what the module then does. The byte-compile step in `tests.yml`
+is now largely subsumed by it and is kept anyway, because it runs before the
+suite and does not depend on pytest collecting anything.
 
 **Does not exist.** There is **no card and no live selection.** **No provider
 fetch has ever run**: nothing has been asked of The Odds API, no price has been
