@@ -20,9 +20,15 @@ reader can check the reasoning rather than take it:
     The null baseline must lose. If betting everything makes money, nothing
     computed on top of it means anything.
 ``settlement``
-    The realised rate must match the devigged price. `tackles_assists`
-    returns +11.7% across three seasons and is a seven-point settlement gap;
-    a constant offset replicates perfectly and survives every other check.
+    The realised rate must match the devigged price. In **the NFL lab**,
+    `tackles_assists` returns +11.7% on **3,109 held-out bets** against a
+    seven-point settlement gap; a constant offset replicates perfectly and
+    survives every other check. That is that lab's number on that lab's
+    market, named because it is why this bar exists — **this lab has measured
+    no market at all.** (+11.7% is the corrected held-out figure; the same
+    market is quoted at +16% in `settlement_agreement.py`, which is the
+    original before the charting correction. Two stages of one finding, not
+    two findings.)
     A market this screen never *examined* fails the bar too — an approval
     cleared by never having been measured is the same artefact in a
     different shape.

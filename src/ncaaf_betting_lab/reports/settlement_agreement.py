@@ -12,21 +12,40 @@ quantity from the one that was priced — and the resulting "edge" is a
 constant, which means it **replicates perfectly across seasons and looks
 exactly like a stable finding.**
 
-That is not hypothetical. `tackles_assists` returned +16% across three
-seasons, survived split-half, fragility and a family correction, and had no
-closing-line value at all. The explanation was that nflverse's defensive
-charting records about half a tackle per player-game fewer than whatever the
-books settle on: at a +0.5 offset the edge vanishes completely and both sides
-return the vig. Replication cannot protect against a systematic settlement
-offset, because a constant offset replicates by construction.
+That is not hypothetical, and the case that proves it belongs to **the NFL lab,
+not to this one** — stated that way on purpose, because this lab has measured
+nothing of the kind and must not appear to have. There, `tackles_assists`
+returned +16% across three seasons, survived split-half, fragility and a family
+correction, and had no closing-line value at all. (+16% is the figure before
+that lab's charting correction; corrected and held out it is +11.7% on 3,109
+bets, which is what `allowlist_evidence.py` quotes. One finding at two stages.)
+The explanation was that
+nflverse's defensive charting records about half a tackle per player-game fewer
+than whatever the books settle on: at a +0.5 offset the edge vanishes
+completely and both sides return the vig. Replication cannot protect against a
+systematic settlement offset, because a constant offset replicates by
+construction.
+
+**The screen ports; that finding does not.** It is also worth being precise
+about what carries over: the NFL case was a player prop settled on a charted
+quantity, and college player props are out of scope here (`leagues.py`). What
+this screen watches in this lab is the team markets — a total or a team total
+settled from cfbfastR's scoring against whatever the book settles on. The
+mechanism is identical and the sample size is not, so nothing about the NFL
+figures above is evidence about this league.
 
 ## The diagnostic
 
-The naive version — "the over rate should be near 50%" — is wrong, and its
-first run said so loudly: it flagged `anytime_td`, where a 13% over rate is
-exactly right because the line is 0.5 and most players do not score, and it
+The naive version — "the over rate should be near 50%" — is wrong, and the NFL
+lab's first run said so loudly: it flagged `anytime_td`, where a 13% over rate
+is exactly right because the line is 0.5 and most players do not score, and it
 flagged the yardage markets on an absolute median gap of 2.5 yards against a
 37-yard line.
+
+Those are that lab's numbers on that lab's markets. The lesson is the one that
+ports, and it is not about props: a team total priced at 52.5 and a spread
+priced at -17.5 have different base rates too, and a screen comparing either to
+a half would flag both for being what they are.
 
 So the comparison is to the **price**, not to a half. For each featured
 wager both sides are quoted, so the two prices devig to the market's own
@@ -180,10 +199,10 @@ def render(result: AgreementResult) -> str:
     add(
         "Both sides of a featured line are quoted, so the two prices devig to "
         "the market's own probability of the over. **That is what the outcome "
-        "should match** — not a half, which would flag a 0.5-line touchdown "
-        "market where a 13% over rate is exactly right. Where the realised "
-        "rate sits well below the priced one, every bet in that market is "
-        "scored against a smaller quantity than the book priced."
+        "should match** — not a half, which would flag every market whose line "
+        "sits away from its median for being exactly what it is. Where the "
+        "realised rate sits well below the priced one, every bet in that "
+        "market is scored against a smaller quantity than the book priced."
     )
     add("")
     add(
@@ -223,9 +242,11 @@ def render(result: AgreementResult) -> str:
         add(
             "A settlement suspect's measured edge is **not evidence of "
             "anything** until an independent source settles the question. It "
-            "is not a small caveat: an offset of half a unit was enough to "
-            "turn a three-season, family-corrected, split-half-stable +16% "
-            "into the vig."
+            "is not a small caveat: in the NFL lab an offset of half a unit "
+            "was enough to turn a three-season, family-corrected, "
+            "split-half-stable +16% into the vig. That figure is that "
+            "league's and is quoted here for the size of the effect, never as "
+            "a measurement about college football."
         )
     elif result.markets:
         add("**No market is a settlement suspect.**")
