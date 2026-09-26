@@ -76,6 +76,7 @@ def _write(
 
 def _approval(markets: list[str], receipt: str = "r-1") -> dict:
     return {
+        "allowed_provider_names": ["the_odds_api"],
         "provider_allowlist_entries": {
             NCAAF.policy_key(): {
                 "allowlist_status": "allowed",
@@ -334,14 +335,92 @@ def test_a_receipt_whose_markets_are_not_a_list_approves_nothing(tmp_path: Path)
     assert not policy.market_allowed(NCAAF, "moneyline")
 
 
-@pytest.mark.parametrize("receipt_id", ["../r-1", "r/1", "r 1", ""])
+@pytest.mark.parametrize("receipt_id", ["../r-1", "r/1", "r 1", "a" * 129])
 def test_a_receipt_id_that_is_not_a_safe_filename_approves_nothing(
     tmp_path: Path, receipt_id: str
 ) -> None:
     """The id becomes a path. One that could climb out of the receipts
-    directory is refused before anything is opened."""
+    directory is refused before anything is opened - and this test puts a
+    well-formed receipt at the place the id would reach, so it fails if
+    the guard is ever removed rather than passing by absence."""
     _write(tmp_path, _approval(["moneyline"], receipt=receipt_id))
+    target = tmp_path / RECEIPTS_DIRNAME / f"{receipt_id}.json"
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(
+            json.dumps(_receipt(receipt_id, ["moneyline"])), encoding="utf-8"
+        )
+    except OSError:
+        pass  # a name the filesystem itself refuses is refused twice over
 
     policy = StagingProviderPolicy.load(manual_dir=tmp_path)
 
     assert not policy.market_allowed(NCAAF, "moneyline")
+    assert "not a safe filename" in policy.refusal_reason(NCAAF, "moneyline")
+
+
+def test_an_empty_receipt_id_is_an_incomplete_approval(tmp_path: Path) -> None:
+    _write(tmp_path, _approval(["moneyline"], receipt=""))
+
+    policy = StagingProviderPolicy.load(manual_dir=tmp_path)
+
+    assert not policy.market_allowed(NCAAF, "moneyline")
+    assert "evidence receipt id" in policy.refusal_reason(NCAAF, "moneyline")
+
+
+def test_a_receipt_signed_by_someone_else_approves_nothing(tmp_path: Path) -> None:
+    """The entry says who approved; the receipt has to be that person's."""
+    _write(
+        tmp_path,
+        _approval(["moneyline"]),
+        receipt="r-1",
+        receipt_body=_receipt("r-1", ["moneyline"], reviewer_name="someone_else"),
+    )
+
+    policy = StagingProviderPolicy.load(manual_dir=tmp_path)
+
+    assert not policy.market_allowed(NCAAF, "moneyline")
+    assert "signed by 'someone_else'" in policy.refusal_reason(NCAAF, "moneyline")
+
+
+def test_an_entry_under_a_provider_not_in_allowed_provider_names_approves_nothing(
+    tmp_path: Path,
+) -> None:
+    payload = _approval(["moneyline"])
+    payload["allowed_provider_names"] = []
+    _write(tmp_path, payload, receipt="r-1")
+
+    policy = StagingProviderPolicy.load(manual_dir=tmp_path)
+
+    assert not policy.market_allowed(NCAAF, "moneyline")
+    assert "allowed_provider_names" in policy.refusal_reason(NCAAF, "moneyline")
+
+
+def test_a_symlinked_receipt_approves_nothing(tmp_path: Path) -> None:
+    """A symlink in the receipts directory reads a file from anywhere on disk
+    as a receipt. It is not one."""
+    _write(tmp_path, _approval(["moneyline"]))
+    elsewhere = tmp_path / "elsewhere.json"
+    elsewhere.write_text(json.dumps(_receipt("r-1", ["moneyline"])), encoding="utf-8")
+    receipts = tmp_path / RECEIPTS_DIRNAME
+    receipts.mkdir(parents=True, exist_ok=True)
+    (receipts / "r-1.json").symlink_to(elsewhere)
+
+    policy = StagingProviderPolicy.load(manual_dir=tmp_path)
+
+    assert not policy.market_allowed(NCAAF, "moneyline")
+    assert "not a regular file" in policy.refusal_reason(NCAAF, "moneyline")
+
+
+def test_a_receipt_is_read_once_per_loaded_policy(tmp_path: Path) -> None:
+    """Every row of a card run is judged against the same bytes: after the
+    first decision the receipt on disk no longer matters to this policy."""
+    _write(tmp_path, _approval(["moneyline", "spread"]), receipt="r-1")
+    policy = StagingProviderPolicy.load(manual_dir=tmp_path)
+    assert policy.market_allowed(NCAAF, "moneyline")
+
+    (tmp_path / RECEIPTS_DIRNAME / "r-1.json").unlink()
+
+    assert policy.market_allowed(NCAAF, "spread")
+    assert policy.refusal_reason(NCAAF, "spread") == ""
+    assert not StagingProviderPolicy.load(manual_dir=tmp_path).market_allowed(NCAAF, "spread")

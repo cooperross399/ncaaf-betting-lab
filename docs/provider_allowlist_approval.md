@@ -97,10 +97,16 @@ NFL clubs do not share a distribution. One receipt, one league.
 | file exists, is JSON, id is a safe filename | yes | yes |
 | `receipt_id` matches the filename | yes | yes |
 | `policy_key` is this league | yes | yes |
-| `reviewer_name` present | yes | yes |
+| `reviewer_name` present and the same name the entry carries | yes | yes |
+| the entry's provider is in `allowed_provider_names` | yes | yes |
+| not a symlink; resolves inside the receipts directory | yes | yes |
 | market is in `approved_markets` | yes | yes, for every listed market |
+| an entry that says `allowed` is complete (reviewer, receipt id, markets) | | yes |
 | `reviewer_statement`, timezone-aware `reviewed_at` | | yes |
-| every evidence file inside the repository, present, checksum matching | | yes |
+| every evidence file inside the repository, outside `data/manual/`, present, checksum matching | | yes |
+
+The card reads each receipt once per loaded policy, so every row of a run is
+judged against the same bytes.
 
 **What neither can do is verify that a human wrote the receipt.** The checker
 and the file live in the same repository, and whoever can edit one can edit

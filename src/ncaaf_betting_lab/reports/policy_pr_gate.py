@@ -71,6 +71,13 @@ def _evidence_problems(
                 "the repository"
             )
             continue
+        if target.is_relative_to((root / "data" / "manual").resolve()):
+            problems.append(
+                f"receipt `{identifier}` cites `{relative}` as evidence. The "
+                "policy and the receipts are what is being approved; they "
+                "cannot also be the evidence for it"
+            )
+            continue
         if not target.is_file():
             problems.append(f"receipt `{identifier}` cites `{relative}`, which does not exist")
             continue
@@ -90,15 +97,26 @@ def check_policy(
 
     Only entries that claim to be approvals are checked. A `proposed` entry
     allows nothing, so it needs no receipt; the moment its status says
-    `allowed`, it needs all of it.
+    `allowed`, it needs all of it - a half-finished edit that says `allowed`
+    with no reviewer is exactly what must not merge with a green gate.
     """
     root = (repository_root or PROJECT_ROOT).resolve()
     if policy.load_error:
         return [policy.load_error]
     problems: list[str] = []
     for key, entry in sorted(policy.entries.items()):
-        if not entry.is_allowed:
+        if entry.status != "allowed":
             continue
+        if not entry.is_allowed:
+            problems.append(
+                f"`{key}` says `allowed` but lacks {', '.join(entry.missing())}"
+            )
+            continue
+        if entry.provider_name not in policy.allowed_provider_names:
+            problems.append(
+                f"`{key}` is under `{entry.provider_name}`, which is not in "
+                "`allowed_provider_names`. Naming a provider there is Cooper's"
+            )
         unknown = sorted(set(entry.required_markets) - set(MARKETS_BY_KEY))
         if unknown:
             problems.append(f"`{key}` lists markets this lab cannot price: {unknown}")

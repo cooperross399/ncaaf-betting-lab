@@ -44,6 +44,7 @@ def _checkout(tmp_path: Path, **receipt_overrides) -> tuple[StagingProviderPolic
     (manual / POLICY_FILENAME).write_text(
         json.dumps(
             {
+                "allowed_provider_names": ["the_odds_api"],
                 "provider_allowlist_entries": {
                     NCAAF.policy_key(): {
                         "allowlist_status": "allowed",
@@ -199,3 +200,50 @@ def test_an_unreadable_policy_fails_the_gate(tmp_path: Path) -> None:
         StagingProviderPolicy.load(manual_dir=manual), repository_root=tmp_path
     )
     assert "could not be read" in problem
+
+
+def test_an_entry_that_says_allowed_but_is_incomplete_fails(tmp_path: Path) -> None:
+    """The half-finished edit: `allowed` with no reviewer must not merge green."""
+    policy, root = _checkout(tmp_path)
+    entry = policy.entries[NCAAF.policy_key()]
+    policy.entries[NCAAF.policy_key()] = type(entry)(
+        **{**entry.__dict__, "reviewer_name": "", "evidence_receipt_id": ""}
+    )
+
+    (problem,) = check_policy(policy, repository_root=root)
+    assert "says `allowed` but lacks" in problem
+    assert "a reviewer name" in problem and "an evidence receipt id" in problem
+
+
+def test_a_provider_not_in_allowed_provider_names_fails(tmp_path: Path) -> None:
+    policy, root = _checkout(tmp_path)
+    policy.allowed_provider_names = ()
+
+    problems = check_policy(policy, repository_root=root)
+    assert any("not in `allowed_provider_names`" in p for p in problems), problems
+
+
+def test_a_receipt_signed_by_someone_other_than_the_entry_names_fails(
+    tmp_path: Path,
+) -> None:
+    policy, root = _checkout(tmp_path, reviewer_name="someone_else")
+
+    (problem,) = check_policy(policy, repository_root=root)
+    assert "signed by 'someone_else'" in problem
+
+
+def test_the_policy_or_a_receipt_cannot_be_its_own_evidence(tmp_path: Path) -> None:
+    first, root = _checkout(tmp_path)
+    own = root / "data" / "manual" / POLICY_FILENAME
+    policy, root = _checkout(
+        tmp_path / "again",
+        evidence=[
+            {
+                "path": "data/manual/" + POLICY_FILENAME,
+                "sha256": hashlib.sha256(own.read_bytes()).hexdigest(),
+            }
+        ],
+    )
+
+    (problem,) = check_policy(policy, repository_root=root)
+    assert "cannot also be the evidence" in problem

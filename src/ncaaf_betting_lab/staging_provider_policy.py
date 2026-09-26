@@ -11,8 +11,10 @@ every failure mode here resolves to "not allowed":
 * market absent from `required_markets` -> not allowed
 * allowlist entry without a reviewer and a receipt id -> not allowed
 * receipt file named but not present on disk -> not allowed
-* receipt unreadable, or for another league, or naming another id -> not allowed
+* receipt unreadable, a symlink, for another league, naming another id, or
+  signed by a different reviewer than the entry names -> not allowed
 * market absent from the receipt's own `approved_markets` -> not allowed
+* entry's provider absent from `allowed_provider_names` -> not allowed
 
 That is the whole design. A policy loader that returns a permissive default on
 an unreadable file is a policy loader that stops existing the moment something
@@ -52,7 +54,7 @@ RECEIPTS_DIRNAME = "human_acceptance_receipts"
 
 #: A receipt id becomes a filename. Anything outside this could climb out of
 #: the receipts directory, and a receipt read from elsewhere is not a receipt.
-RECEIPT_ID_PATTERN = re.compile(r"[A-Za-z0-9._-]+")
+RECEIPT_ID_PATTERN = re.compile(r"[A-Za-z0-9._-]{1,128}")
 
 #: The one provider this lab is built around. Naming it here does not allow
 #: it; the policy file does that, and it does not.
@@ -70,6 +72,25 @@ class AllowlistEntry:
     evidence_receipt_id: str
     required_markets: tuple[str, ...]
     known_limitations: tuple[str, ...] = ()
+
+    @property
+    def provider_name(self) -> str:
+        """`the_odds_api` in `the_odds_api:nfl`: the name that has to appear in
+        `allowed_provider_names` for this entry to count."""
+        return self.policy_key.split(":", 1)[0].strip()
+
+    def missing(self) -> tuple[str, ...]:
+        """What a complete approval has that this entry lacks."""
+        return tuple(
+            name
+            for name, present in (
+                ("a status of 'allowed'", self.status == "allowed"),
+                ("a reviewer name", bool(self.reviewer_name.strip())),
+                ("an evidence receipt id", bool(self.evidence_receipt_id.strip())),
+                ("a non-empty market list", bool(self.required_markets)),
+            )
+            if not present
+        )
 
     @property
     def is_allowed(self) -> bool:
@@ -95,10 +116,16 @@ class StagingProviderPolicy:
         *,
         load_error: str = "",
         manual_dir: Path | None = None,
+        allowed_provider_names: tuple[str, ...] = (),
     ) -> None:
         self.entries = dict(entries or {})
         self.load_error = load_error
         self.manual_dir = Path(manual_dir) if manual_dir else MANUAL_DIR
+        self.allowed_provider_names = tuple(allowed_provider_names)
+        #: Each receipt is read once per loaded policy, so every decision in a
+        #: card run is judged against the same bytes: the list checked is the
+        #: list used, for the whole run and not just for one call.
+        self._receipts: dict[tuple[str, str], tuple[dict[str, Any] | None, str]] = {}
 
     # -- loading ----------------------------------------------------------
 
@@ -124,9 +151,15 @@ class StagingProviderPolicy:
                 load_error="The policy file is not a JSON object.",
                 manual_dir=directory,
             )
+        names_value = payload.get("allowed_provider_names")
+        names = tuple(
+            str(item).strip()
+            for item in (names_value if isinstance(names_value, list) else [])
+            if isinstance(item, str) and item.strip()
+        )
         raw = payload.get("provider_allowlist_entries")
         if not isinstance(raw, dict):
-            return cls(manual_dir=directory)
+            return cls(manual_dir=directory, allowed_provider_names=names)
 
         entries: dict[str, AllowlistEntry] = {}
         for key, value in raw.items():
@@ -147,15 +180,24 @@ class StagingProviderPolicy:
                     str(item) for item in (value.get("known_limitations") or [])
                 ),
             )
-        return cls(entries, manual_dir=directory)
+        return cls(entries, manual_dir=directory, allowed_provider_names=names)
 
     # -- decisions --------------------------------------------------------
 
     def entry_for(self, league: League) -> AllowlistEntry | None:
         return self.entries.get(league.policy_key())
 
+    def receipts_dir(self) -> Path:
+        return self.manual_dir / RECEIPTS_DIRNAME
+
     def receipt_path(self, entry: AllowlistEntry) -> Path:
-        return self.manual_dir / RECEIPTS_DIRNAME / f"{entry.evidence_receipt_id}.json"
+        """Where the cited receipt has to be. Refuses to build a path from an
+        id that could point anywhere else: every path construction goes
+        through this guard, not just the one `load_receipt` makes."""
+        identifier = entry.evidence_receipt_id
+        if not RECEIPT_ID_PATTERN.fullmatch(identifier):
+            raise ValueError(f"receipt id {identifier!r} is not a safe filename")
+        return self.receipts_dir() / f"{identifier}.json"
 
     def load_receipt(self, entry: AllowlistEntry) -> tuple[dict[str, Any] | None, str]:
         """The receipt an entry cites, opened and read, or why it could not be.
@@ -165,18 +207,30 @@ class StagingProviderPolicy:
         "signed" was as good as a reviewed decision, and so was a real receipt
         for two markets sitting under an entry that lists twenty.
         """
-        identifier = entry.evidence_receipt_id.strip()
-        if not RECEIPT_ID_PATTERN.fullmatch(identifier):
-            return None, f"receipt id {identifier!r} is not a safe filename"
-        path = self.receipt_path(entry)
-        if not path.is_file():
-            return None, (
-                f"the approval names receipt `{identifier}` but no such file "
-                f"exists at {path}. An id pointing at nothing is not an approval"
-            )
+        identifier = entry.evidence_receipt_id
         try:
+            path = self.receipt_path(entry)
+        except ValueError as exc:
+            return None, str(exc)
+        try:
+            # A symlink committed into the receipts directory would read a
+            # file from anywhere on disk as a receipt; so would a real file
+            # whose resolved location is elsewhere. Neither is a receipt.
+            if path.is_symlink() or not path.resolve().is_relative_to(
+                self.receipts_dir().resolve()
+            ):
+                return None, (
+                    f"receipt `{identifier}` is not a regular file inside "
+                    f"`data/manual/{RECEIPTS_DIRNAME}/`"
+                )
+            if not path.is_file():
+                return None, (
+                    f"the approval names receipt `{identifier}` but no such "
+                    f"file exists at {path}. An id pointing at nothing is not "
+                    "an approval"
+                )
             payload = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        except (OSError, UnicodeError, json.JSONDecodeError, RecursionError) as exc:
             return None, f"receipt `{identifier}` could not be read: {exc}"
         if not isinstance(payload, dict):
             return None, f"receipt `{identifier}` is not a JSON object"
@@ -193,11 +247,15 @@ class StagingProviderPolicy:
         are properties of the paperwork, and the paperwork only changes in a
         pull request.
         """
-        payload, error = self.load_receipt(entry)
-        if payload is None:
-            return None, error
-        problem = self._receipt_field_problem(entry, payload)
-        return (None, problem) if problem else (payload, "")
+        cache_key = (entry.policy_key, entry.evidence_receipt_id)
+        if cache_key not in self._receipts:
+            payload, error = self.load_receipt(entry)
+            if payload is not None:
+                error = self._receipt_field_problem(entry, payload)
+                if error:
+                    payload = None
+            self._receipts[cache_key] = (payload, error)
+        return self._receipts[cache_key]
 
     def _receipt_field_problem(
         self, entry: AllowlistEntry, payload: dict[str, Any]
@@ -214,8 +272,15 @@ class StagingProviderPolicy:
                 f"receipt `{identifier}` approves {payload.get('policy_key')!r}, "
                 f"not `{entry.policy_key}`. One receipt, one league"
             )
-        if not str(payload.get("reviewer_name", "")).strip():
+        reviewer = str(payload.get("reviewer_name", "")).strip()
+        if not reviewer:
             return f"receipt `{identifier}` names no reviewer"
+        if reviewer != entry.reviewer_name.strip():
+            return (
+                f"receipt `{identifier}` is signed by {reviewer!r} but the "
+                f"entry names {entry.reviewer_name!r}. A receipt is one "
+                "person's decision, and the entry has to say whose"
+            )
         approved = payload.get("approved_markets")
         if not isinstance(approved, list) or not all(
             isinstance(item, str) for item in approved
@@ -226,12 +291,15 @@ class StagingProviderPolicy:
     def receipt_problem(self, entry: AllowlistEntry) -> str:
         return self.checked_receipt(entry)[1]
 
-    def receipt_approves(self, entry: AllowlistEntry, market: str) -> bool:
-        # One read: the list checked is the list used.
+    def approved_by_receipt(self, entry: AllowlistEntry) -> frozenset[str]:
+        """The markets the cited receipt approves; empty when it cannot stand."""
         payload, _ = self.checked_receipt(entry)
         if payload is None:
-            return False
-        return market in {item.strip() for item in payload["approved_markets"]}
+            return frozenset()
+        return frozenset(item.strip() for item in payload["approved_markets"])
+
+    def receipt_approves(self, entry: AllowlistEntry, market: str) -> bool:
+        return market in self.approved_by_receipt(entry)
 
     def market_allowed(self, league: League, market: str) -> bool:
         """The one question the card asks. Every path out of it is explicit."""
@@ -247,6 +315,10 @@ class StagingProviderPolicy:
             # not confer the ability to settle a bet.
             return False
         if key not in entry.required_markets:
+            return False
+        if entry.provider_name not in self.allowed_provider_names:
+            # Naming a provider in `allowed_provider_names` is Cooper's, and
+            # an entry under a name he has not written there is not his.
             return False
         # The receipt must be opened and must itself approve this market.
         # The policy's market list is what someone wants; the receipt's is
@@ -280,19 +352,9 @@ class StagingProviderPolicy:
                 "both exist."
             )
         if not entry.is_allowed:
-            missing = [
-                name
-                for name, present in (
-                    ("a status of 'allowed'", entry.status == "allowed"),
-                    ("a reviewer name", bool(entry.reviewer_name.strip())),
-                    ("an evidence receipt id", bool(entry.evidence_receipt_id.strip())),
-                    ("a non-empty market list", bool(entry.required_markets)),
-                )
-                if not present
-            ]
             return (
                 f"The allowlist entry for `{league.policy_key()}` is not a "
-                f"complete approval: it lacks {', '.join(missing)}."
+                f"complete approval: it lacks {', '.join(entry.missing())}."
             )
         key = str(market).strip()
         if key not in MARKETS_BY_KEY:
@@ -307,10 +369,18 @@ class StagingProviderPolicy:
                 f"`{entry.evidence_receipt_id}`). Measurement and a signed "
                 "human acceptance receipt are what add a market; nothing else."
             )
-        problem = self.receipt_problem(entry)
-        if problem:
+        if entry.provider_name not in self.allowed_provider_names:
+            return (
+                f"`{entry.provider_name}` is not in `allowed_provider_names`, "
+                f"so the entry for `{league.policy_key()}` is not an approval "
+                "Cooper has written down."
+            )
+        # One read, shared with `market_allowed`: the reason printed is about
+        # the same bytes the decision was made on.
+        payload, problem = self.checked_receipt(entry)
+        if payload is None:
             return f"{problem[0].upper()}{problem[1:]}."
-        if not self.receipt_approves(entry, key):
+        if key not in {item.strip() for item in payload["approved_markets"]}:
             return (
                 f"`{key}` is in the policy's list for `{league.policy_key()}` "
                 f"but not in the `approved_markets` of receipt "
