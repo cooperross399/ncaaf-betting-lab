@@ -13,6 +13,8 @@ from pathlib import Path
 
 import pytest
 
+from ncaaf_betting_lab.config import STAGING_PROVIDER_POLICY_PATH
+from ncaaf_betting_lab.markets import ALL_MARKETS, MARKETS_BY_KEY
 from ncaaf_betting_lab.leagues import NCAAF, League
 from ncaaf_betting_lab.staging_provider_policy import (
     POLICY_FILENAME,
@@ -223,13 +225,18 @@ def test_a_market_that_is_allowed_has_no_refusal_reason(tmp_path: Path) -> None:
     assert policy.refusal_reason(NCAAF, "moneyline") == ""
 
 
-def test_the_repositorys_own_policy_file_still_allowlists_nothing() -> None:
-    """The state that ships. If this ever fails, a market was allowlisted
-    without a receipt being reviewed, and the card must not run."""
+def test_the_repositorys_own_policy_allowlists_exactly_what_its_receipt_signed() -> None:
+    """The state that ships: every allowlisted market is one the cited receipt
+    approves, and every market the entry lists is allowed. If this fails, the
+    policy and its receipt have drifted apart."""
     policy = StagingProviderPolicy.load()
+    entry = policy.entry_for(NCAAF)
+    assert entry is not None and entry.is_allowed
 
-    assert policy.allowed_markets(NCAAF) == ()
-    assert "No market is allowlisted" in policy.summary_line(NCAAF)
+    allowed = set(policy.allowed_markets(NCAAF))
+
+    assert allowed == set(entry.required_markets)
+    assert allowed <= set(policy.approved_by_receipt(entry))
 
 
 def test_a_policy_with_no_entries_at_all_says_so_rather_than_blaming_a_league(
@@ -424,3 +431,149 @@ def test_a_receipt_is_read_once_per_loaded_policy(tmp_path: Path) -> None:
     assert policy.market_allowed(NCAAF, "spread")
     assert policy.refusal_reason(NCAAF, "spread") == ""
     assert not StagingProviderPolicy.load(manual_dir=tmp_path).market_allowed(NCAAF, "spread")
+
+
+# -- the committed policy file (from the allowlist proposal, #4) ---------
+
+
+@pytest.fixture(scope="module")
+def committed() -> StagingProviderPolicy:
+    """The real file, loaded exactly as a caller would load it."""
+    return StagingProviderPolicy.load()
+
+
+# -- the committed file -------------------------------------------------
+
+
+def test_the_committed_policy_file_exists_and_parses(
+    committed: StagingProviderPolicy,
+) -> None:
+    """A policy that cannot be read allows nothing — correct, and still a bug.
+
+    Fail-closed is the right behaviour for a malformed file and it is a bad
+    thing to ship: every refusal downstream would then be explained by a typo
+    rather than by the absence of evidence, and the two read identically in a
+    report.
+    """
+    assert STAGING_PROVIDER_POLICY_PATH.is_file(), (
+        f"No policy file at {STAGING_PROVIDER_POLICY_PATH}."
+    )
+    assert committed.load_error == "", committed.load_error
+
+
+def test_every_named_market_is_one_this_lab_can_price_and_settle(
+    committed: StagingProviderPolicy,
+) -> None:
+    """A typo in `required_markets` is invisible without this.
+
+    `market_allowed()` returns False for a market it does not recognise, so a
+    misspelling does not fail loudly — it produces a market that is named in
+    the approval and can never be selected, which in a report looks exactly
+    like a market no book quoted.
+    """
+    entry = committed.entry_for(NCAAF)
+    assert entry is not None, "No entry for NCAAF in the committed policy."
+    unknown = [m for m in entry.required_markets if m not in MARKETS_BY_KEY]
+    assert not unknown, (
+        f"Named in required_markets but absent from the registry: {unknown}. "
+        f"Known: {sorted(MARKETS_BY_KEY)}."
+    )
+
+
+def test_every_named_market_carries_its_own_recorded_limitation(
+    committed: StagingProviderPolicy,
+) -> None:
+    """A market may not be proposed without saying what is unknown about it.
+
+    The per-market lines are keyed by leading token, so `moneyline` cannot
+    satisfy `moneyline_h1` by being a prefix of it — which is the shape of
+    mistake that would leave the half markets undocumented while the test
+    stayed green.
+    """
+    entry = committed.entry_for(NCAAF)
+    assert entry is not None
+    documented = {
+        line.split(" ", 1)[0] for line in entry.known_limitations if line.strip()
+    }
+    undocumented = [m for m in entry.required_markets if m not in documented]
+    assert not undocumented, (
+        f"Named in required_markets with no known_limitations line of their "
+        f"own: {undocumented}. A market is proposed with its limitations or "
+        f"it is not proposed."
+    )
+
+
+# -- the invariant, before a signature and after one --------------------
+
+
+def test_no_market_reads_as_allowed_without_the_paperwork_it_claims(
+    committed: StagingProviderPolicy,
+) -> None:
+    """The coupling, pinned. True today, and true after Cooper signs.
+
+    A market may report allowed ONLY when the entry is a complete approval and
+    the receipt it names is a real file. An id pointing at nothing is the shape
+    a fabricated approval takes, which is why the loader re-checks the file on
+    every call rather than trusting the id.
+    """
+    entry = committed.entry_for(NCAAF)
+    assert entry is not None
+    for market in MARKETS_BY_KEY:
+        if not committed.market_allowed(NCAAF, market):
+            continue
+        assert entry.is_allowed, (
+            f"`{market}` reads as allowed from an entry that is not a "
+            f"complete approval."
+        )
+        receipt = committed.receipt_path(entry)
+        assert receipt.is_file(), (
+            f"`{market}` reads as allowed but the receipt it names is not on "
+            f"disk at {receipt}."
+        )
+
+
+def test_an_entry_that_is_not_an_approval_allows_nothing(
+    committed: StagingProviderPolicy,
+) -> None:
+    """While the entry is a proposal, `allowed_markets` must stay empty.
+
+    Stated as an implication rather than as a fact about today, so signing a
+    receipt turns this test green-by-vacuity instead of red.
+    """
+    entry = committed.entry_for(NCAAF)
+    assert entry is not None
+    if not entry.is_allowed:
+        assert committed.allowed_markets(NCAAF) == ()
+        assert "No market is allowlisted" in committed.summary_line(NCAAF)
+
+
+def test_a_refusal_names_what_is_missing(committed: StagingProviderPolicy) -> None:
+    """An unusable market must say why, in words a card can print.
+
+    "Not allowed" with no reason is how an absence becomes a pass: a reader
+    cannot tell a market awaiting a signature from one that was measured and
+    rejected.
+    """
+    entry = committed.entry_for(NCAAF)
+    assert entry is not None
+    for market in entry.required_markets:
+        if committed.market_allowed(NCAAF, market):
+            continue
+        assert committed.refusal_reason(NCAAF, market).strip(), (
+            f"`{market}` is refused with no reason given."
+        )
+
+# -- the registry itself -------------------------------------------------
+
+
+def test_no_market_claims_a_retention_it_has_not_earned() -> None:
+    """`retained=True` would be a guess. No probe has run for college football.
+
+    Guarded here rather than left to review because `True` is one keystroke
+    from `None` and reads as a measurement everywhere downstream.
+    """
+    guessed = [m.key for m in ALL_MARKETS if m.retained is True]
+    assert not guessed, (
+        f"retained=True without a probe: {guessed}. None means unprobed; "
+        f"False would be a finding and True would be a guess."
+    )
