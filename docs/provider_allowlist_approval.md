@@ -59,23 +59,60 @@ NFL clubs do not share a distribution. One receipt, one league.
    there is no `data/outputs/allowlist_evidence_bundle.md` and no bundle to
    quote. A session that needs one has to build it from inputs that do not
    exist yet — see steps 1 to 3.*
-5. **PR gate.** In the NHL lab, a pull request that changes the policy file
-   must carry a matching evidence bundle and a human acceptance receipt, or CI
-   fails.
-   ***This gate does not exist in this repository.*** Neither `Tests` nor
-   `Ledger Guard` inspects the policy file, and no required check re-verifies
-   the paperwork on a policy change. What stands in its place today is weaker
-   and is named honestly so nobody mistakes it for the gate: the loader's
-   fail-closed checks, which are enforced at **read** time rather than at
-   merge time, and `tests/test_staging_provider_policy.py`, which asserts that
-   the committed policy never reports a market as allowed unless a receipt file
-   is genuinely present on disk. Building the real gate is outstanding work.
-6. **Human acceptance receipt.** Cooper reviews the evidence and signs. **Only
-   this step allowlists anything.** The receipt lives at
-   `data/manual/human_acceptance_receipts/{evidence_receipt_id}.md`, and
-   `market_allowed()` re-checks that the file is present on every call — an id
-   pointing at nothing is not an approval, because that is the shape a
-   fabricated approval takes.
+5. **PR gate.** `tests/test_policy_pr_gate.py::test_the_shipped_policy_passes_the_gate`
+   runs `reports/policy_pr_gate.py` against the repository's own policy,
+   receipts and evidence, inside the suite branch protection requires. Every
+   entry whose status is `allowed` must cite a receipt that is complete — see
+   below — and whose evidence checksums still match the files on disk, or the
+   pull request cannot merge. It is a registered guard, so deleting or
+   deselecting it is a red build.
+6. **Human acceptance receipt.** Cooper reviews the evidence and signs. Only
+   this step allowlists anything. The card opens the receipt on every run: a
+   market is allowed only if the policy lists it **and** the receipt's own
+   `approved_markets` does. An id naming a file that is not there, a receipt
+   for another league, or a policy listing a market the receipt does not
+   approve all allow nothing.
+
+## The receipt
+
+`data/manual/human_acceptance_receipts/{receipt_id}.json`, cited by
+`evidence_receipt_id` in the policy entry:
+
+```json
+{
+  "receipt_id": "the same id as the filename",
+  "policy_key": "the_odds_api:ncaaf",
+  "reviewer_name": "who signed",
+  "reviewer_statement": "what was read, and why it is enough",
+  "reviewed_at": "2026-09-01T12:00:00-04:00",
+  "approved_markets": ["moneyline"],
+  "evidence": [
+    {"path": "data/outputs/ncaaf_allowlist_evidence.md", "sha256": "..."}
+  ]
+}
+```
+
+| checked | by the card, every run | by the PR gate |
+| --- | --- | --- |
+| file exists, is JSON, id is a safe filename | yes | yes |
+| `receipt_id` matches the filename | yes | yes |
+| `policy_key` is this league | yes | yes |
+| `reviewer_name` present and the same name the entry carries | yes | yes |
+| the entry's provider is in `allowed_provider_names` | yes | yes |
+| not a symlink; resolves inside the receipts directory | yes | yes |
+| market is in `approved_markets` | yes | yes, for every listed market |
+| an entry that says `allowed` is complete (reviewer, receipt id, markets) | | yes |
+| `reviewer_statement`, timezone-aware `reviewed_at` | | yes |
+| every evidence file inside the repository, outside `data/manual/`, present, checksum matching | | yes |
+
+The card reads each receipt once per loaded policy, so every row of a run is
+judged against the same bytes.
+
+**What neither can do is verify that a human wrote the receipt.** The checker
+and the file live in the same repository, and whoever can edit one can edit
+the other. Cooper's review of the pull request, enforced by branch protection,
+is what carries that weight. The gate makes the record complete and current;
+it does not make it authentic.
 
 ## What Claude may never do
 

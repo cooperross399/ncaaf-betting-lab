@@ -143,6 +143,7 @@ REQUIRED_MODULES: tuple[str, ...] = (
     "tests/test_no_dangling_file_references.py",
     "tests/test_the_guards_exist.py",
     "tests/test_every_module_imports.py",
+    "tests/test_policy_pr_gate.py",
 )
 
 
