@@ -1,0 +1,44 @@
+{
+  "receipt_id": "the_odds_api-ncaaf-20260928-signed-by-claude-for-cooperross399",
+  "policy_key": "the_odds_api:ncaaf",
+  "reviewer_name": "cooperross399",
+  "reviewed_at": "2026-09-28T19:02:12-04:00",
+  "approved_markets": [
+    "moneyline",
+    "spread",
+    "total_points",
+    "alternate_spread",
+    "alternate_total_points",
+    "team_total",
+    "alternate_team_total",
+    "moneyline_h1",
+    "spread_h1",
+    "total_points_h1"
+  ],
+  "signed_by": "Claude, on Cooper Ross's explicit instruction",
+  "authorisation": {
+    "instruction": "I am givin full permission for you to sign for me as i already have done before",
+    "then": "Chose 'All five' proposals (EPL #318, NFL #54, CBB #101, golf #5, NCAAF #4) when asked which to sign, and said 'go'",
+    "session": "https://claude.ai/code/session_01MLyv5sDrNt4PF58XBr3M2w",
+    "date": "2026-09-28"
+  },
+  "reviewer_statement": "Signed by Claude on Cooper Ross's explicit written instruction, as his delegate. Cooper did not personally review this evidence before this receipt was written. The proposal (ncaaf-betting-lab #4) describes itself as 'against the evidence': no allowlist evidence bundle was ever built for this lab, no provider fetch has run, and no market has been measured against real prices. This receipt records an owner's decision to allowlist all ten markets regardless, not a finding that the evidence supports it. Every other card gate still applies.",
+  "evidence": [
+    {
+      "path": "data/outputs/ncaaf_steps_2_to_5.md",
+      "sha256": "0cf3fbcb5d391da151c2e784fa3686ef4ffc72d4d6b0fb3a23220b807d1e51a6"
+    },
+    {
+      "path": "data/outputs/opener_study.md",
+      "sha256": "0a5ce128eca1b5ed2d0cdf6992d4f05e9ee31b48882f55638839349537f7bd94"
+    },
+    {
+      "path": "data/outputs/ratings_residual.md",
+      "sha256": "1586588c93e6695a04e962198b262f56d87c852c6fb777c4676c479b068864bf"
+    },
+    {
+      "path": "data/outputs/experiment_ledger.md",
+      "sha256": "56a1818ed0c7f915233c914ee1513623766577682c8ccb7c5c4157e505ea18e2"
+    }
+  ]
+}

@@ -25,12 +25,19 @@ def settlement_suspects(report_path) -> set[str]:
     """Markets to exclude, read from the settlement screen's own output.
 
     This was a module constant naming `tackles_assists`, and the constant was
-    true when it was written and false a day later: the market was flagged
-    because our tackle column dropped `def_tackles_with_assist` and undercounted
-    by 7%, and once that was fixed the screen cleared it. A hardcoded exclusion
-    cannot notice that. Scoring a forecast against outcomes that are not the
-    quantity the books settled measures the gap rather than the skill — but so
-    does excluding a market that no longer has a gap.
+    true when it was written and false a day later: **in the NFL lab**, that
+    market was flagged because its tackle column dropped
+    `def_tackles_with_assist` and undercounted by 7%, and once that was fixed
+    the screen cleared it. A hardcoded exclusion cannot notice that. Scoring a
+    forecast against outcomes that are not the quantity the books settled
+    measures the gap rather than the skill — but so does excluding a market
+    that no longer has a gap.
+
+    That incident is the sibling lab's and is named for the shape of the
+    mistake, not as a fact about college football. What ports is the rule: the
+    exclusion list is **read from the settlement screen's own output on every
+    run**, so it can never be more current than the screen and can never be
+    staler either.
 
     A missing report is an error rather than an empty set: "nothing is
     excluded" and "nothing was screened" must not look the same.
@@ -38,9 +45,13 @@ def settlement_suspects(report_path) -> set[str]:
     path = pathlib.Path(report_path)
     if not path.is_file():
         raise FileNotFoundError(
-            f"No settlement screen at {path}. Run "
-            "scripts/run_settlement_agreement.py first: without it nothing "
-            "here knows which markets settle on what they were priced on."
+            f"No settlement screen at {path}. Without it nothing here knows "
+            "which markets settle on what they were priced on, and that is an "
+            "error rather than an empty exclusion set. This lab has no runner "
+            "for the screen yet and no prices to run it on; the screen itself "
+            "is the `reports.settlement_agreement` module. Naming a script "
+            "that does not exist would send the reader looking for a fix that "
+            "is not there."
         )
     suspects, _ = suspects_and_screened(path.read_text(encoding="utf-8"))
     return suspects

@@ -44,8 +44,11 @@ no key, no rate limit) with schedules for 2021-2026 cached under `data/raw/`.
 The league registry, the market registry, the fail-closed provider policy
 loader, the coverage precondition, the kickoff guard, `selection_key()`, the
 margin model, the power and positive-control instruments, the append-only
-experiment ledger, and seven report modules. Two workflows: `Tests` and
-`Ledger Guard`. **The suite passes with ZERO skips** on a clean
+experiment ledger, and six report modules. Two workflows: `Tests` and
+`Ledger Guard`. **Every module under `src/` and `scripts/` imports** — a weaker
+claim than it looks, and one that was false until it was enforced; see below.
+**The suite
+passes with ZERO skips** on a clean
 requirements-only clone — no count is written here, because the count moves
 whenever a guard gains a case and a stale absolute is worse than no number.
 That property is enforced rather than reported, in two places.
@@ -100,6 +103,33 @@ resolve, but not for the stated reason, and one of the reasons was never true:
 `.gitignore` makes `data/raw/` untrackable, so the event-id skip could not have
 been cleared by a provider fetch. **No skip resolves itself. A skip is resolved
 by someone writing the thing.**
+
+And a green suite was never a claim that the package imports. Two modules under
+`src/` raised `ModuleNotFoundError` while the suite passed over both with zero
+skips, because **no test imported either one** and the two things that read
+every file under `src/` both stop at the parse: `compileall` byte-compiles a
+module without executing its imports, and
+`tests/test_league_registry_is_the_only_place.py` uses `ast.parse`. Neither can
+see a file that parses and will not load. `selection.py` imported a `season`
+module that was never ported — so `selection_key()` was listed above as
+existing while it could not be imported, which is the shape of overstatement
+this section exists to prevent — and `reports/clv.py` imported a
+`forward_evidence` module that was never ported either, with
+`reports.props_backtest` missing behind it. `season.py` was ported (its
+calendar and text half only; `data/cfbfastr.py` already owns schedule loading
+here). `clv.py` was **removed**: it was a byte-identical copy of the NFL lab's,
+it needed a props backtest this lab has ruled out of scope, and it carried that
+lab's measured numbers — 272 games, 55.7% of wagers unmoved — as if they were
+this league's, which the pooling rule forbids outright.
+`tests/test_every_module_imports.py` is what makes the next one red instead of
+invisible; it is in the gate's `REQUIRED_MODULES`, so deleting it is red too.
+It walks `scripts/` as well as `src/` — every script guards its work behind
+`if __name__ == "__main__"`, so importing one runs nothing, and a script that
+stopped doing so would start doing its work inside the suite and be caught at
+once. It is a floor and not coverage: it asserts that a module loads and
+nothing about what the module then does. The byte-compile step in `tests.yml`
+is now largely subsumed by it and is kept anyway, because it runs before the
+suite and does not depend on pytest collecting anything.
 
 **Does not exist.** There is **no card and no live selection.** **No provider
 fetch has ever run**: nothing has been asked of The Odds API, no price has been
@@ -207,6 +237,29 @@ machinery ports; the findings do not.** A shared or hierarchical model across
 labs is not forbidden, it is unproven, and it would require two repositories to
 exchange data, which today they do not.
 
+**The port carried findings anyway, and the way it did is worth knowing.** Every
+report module here is byte-identical to the NFL lab's, which is the rule working
+— but the prose inside them came too, and prose is where the findings live. Four
+modules stated that lab's measured numbers as this lab's, one of them **in
+rendered report output**: `slate_coverage.py` told a reader of an NCAAF report
+that the season is "272 games across 57 game days", which is the NFL's regular
+season. Alongside them, three modules named paths this repository does not have,
+including a rendered instruction to run `fetch_football_data.py` and a citation
+of the six-step approval procedure — for the action Claude may never take —
+which had not been ported at all.
+
+So the rule to apply when porting is narrower than "change the package name":
+**a rendered string may never state another league's measurement as this
+league's, and a docstring that cites one must say whose it is.** Citing the
+sibling labs' experience is wanted, because it is why the machinery is shaped
+the way it is; presenting it as evidence about college football is the thing
+banned above. `tests/test_no_dangling_file_references.py` catches the missing
+paths, because a referent either exists or does not. **Nothing catches a wrong
+number in ported prose** — that was found by reading, and the next one will be
+too. A guard matching NFL-shaped figures would be the spelling rule this
+repository has twice recorded as defeated by a rewording, and it is not
+attempted.
+
 The mechanical consequence is that league facts live in `leagues.py` and
 nowhere else. `tests/test_league_registry_is_the_only_place.py` fails the build
 on a league key or a sport-key prefix used as a value outside the registry. The
@@ -224,7 +277,9 @@ write a human acceptance receipt, add a name to `allowed_provider_names`, or
 add a market to `required_markets`. Its honest default is *not supported*, and
 the policy is fail-closed by design: a missing, unreadable or malformed file, a
 wrong-league entry, an allowlist entry with no reviewer or no receipt id, or a
-receipt named but not present on disk all resolve to **not allowed**. Approving
+receipt named but not present on disk, a receipt that does not name the
+market in its own `approved_markets`, or one for another league all resolve to
+**not allowed**. Approving
 a market for one league approves it for no other — the entries are keyed
 `{provider}:{league}` so a policy file cannot express "allowed everywhere" even
 by accident. Cooper signs or does not.
@@ -268,6 +323,20 @@ which an entry was removed or rewritten. The tempting edit is to drop the
 failed tests as exploratory; the failed tests are exactly what make a surviving
 one unlikely to be chance. Re-running the same hypothesis on the same seasons
 is one degree of freedom, not two.
+
+**Do not force-push a branch that has an open PR here.** Measured on PR #6 on
+2026-09-26 rather than reasoned about. `Ledger Guard` resolves its base from the
+`push` event's before-sha, and a force-push names a commit that no longer exists
+on the remote, so `git cat-file -e` on it fails and the workflow **fails closed**
+— correctly, and saying so: *"the append-only check did not run. This is a
+broken guard, NOT evidence that the ledger is intact."* The `pull_request`-
+triggered run on the identical tree passes, because it resolves from the PR base
+instead, so the PR ends up carrying one green `append_only` and one red one, and
+`mergeStateStatus` goes from `CLEAN` to `BLOCKED`.
+
+Re-running the failed job does not clear it: the replayed event carries the same
+dead before-sha. What clears it is an ordinary non-force push on top, whose
+before-sha exists. So amend freely before the first push and never after it.
 
 **A null is only evidence if the instrument could have seen the effect.**
 Report the detectable floor beside the result. A design that cannot resolve a

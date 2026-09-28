@@ -19,13 +19,15 @@
     "for it. Claude may never add a provider, add a market, or write a",
     "receipt. See docs/provider_allowlist_approval.md."
   ],
-  "allowed_provider_names": [],
+  "allowed_provider_names": [
+    "the_odds_api"
+  ],
   "provider_allowlist_entries": {
     "the_odds_api:ncaaf": {
-      "allowlist_status": "proposed",
-      "approved_at": "",
-      "reviewer_name": "",
-      "evidence_receipt_id": "",
+      "allowlist_status": "allowed",
+      "approved_at": "2026-09-28T19:02:12-04:00",
+      "reviewer_name": "cooperross399",
+      "evidence_receipt_id": "the_odds_api-ncaaf-20260928-signed-by-claude-for-cooperross399",
       "required_markets": [
         "moneyline",
         "spread",

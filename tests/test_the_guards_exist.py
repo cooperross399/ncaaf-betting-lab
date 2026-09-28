@@ -780,7 +780,9 @@ def test_the_shadow_rule_flags_what_it_names() -> None:
     assert shadowing_directories(["src/coverage/__init__.py"], prefixes) == [
         "src/coverage/__init__.py"
     ]
-    assert shadowing_directories(["src/ncaaf_betting_lab/reports/clv.py"], prefixes) == []
+    assert shadowing_directories(
+        ["src/ncaaf_betting_lab/reports/settlement_agreement.py"], prefixes
+    ) == []
 
 
 def test_the_path_entries_include_the_ones_ci_really_declares() -> None:

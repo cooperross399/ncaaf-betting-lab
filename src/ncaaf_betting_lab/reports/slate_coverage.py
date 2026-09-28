@@ -1,11 +1,21 @@
 """Was every game day of a finished week frozen, and did it settle?
 
-**The forward ledger is the only evidence this lab can still gather.** The
-bought population is complete — the provider serves props only after
-2023-05-03 and every event has been bought — and the free closing-line series
-is fixed. What is left is 272 regular-season games a season across 57 game
-days, and **it cannot be back-dated**: a Sunday that was never frozen is sample
-that does not exist and cannot be made to.
+**The forward ledger is the only evidence this lab can gather going forward**,
+and it has not started. The lab this was ported from reached that position from
+the other end: its bought population was complete and its closing-line series
+fixed, so the ledger was all that was left. Here **no provider fetch has ever
+run** (`CLAUDE.md`), so the bought population is empty rather than finished.
+
+The conclusion survives the difference, and it is the reason this report
+exists: a game day that passes unfrozen is sample this lab will never hold, and
+**it cannot be back-dated**. A Saturday that was never frozen is sample that
+does not exist and cannot be made to.
+
+How much is at stake per week is a college number and not a professional one —
+far more fixtures, spread from Tuesday to Saturday rather than gathered onto
+one afternoon. `data/cfbfastr.py` holds the counts beside the file they were
+read from, and they are not copied here: a count in two places is a count that
+goes stale in one of them.
 
 That is what this watches. It is not a health check on a workflow; it is an
 inventory of the asset. A run that dies quietly, a provider that returns
@@ -31,8 +41,20 @@ import pandas as pd
 THIN_SNAPSHOT_ROWS = 25
 
 #: Days after kickoff before an unsettled day is a fault rather than a wait.
-#: nflverse revises defensive counting stats between Monday and Wednesday, so
-#: settlement deliberately lags; beyond this the row will never settle.
+#:
+#: **PROVISIONAL, and marked so, in the same sense as the registry's
+#: `daily_credit_cap`.** The 5 is inherited from the lab this was ported from,
+#: where it was derived from a fact that does not hold here: nflverse revises
+#: defensive counting stats between Monday and Wednesday, so settlement
+#: deliberately lagged that window. This lab settles from cfbfastR, whose
+#: revision cadence **has not been measured**, and the markets that made
+#: charting revisions matter there are player props, which are out of scope
+#: here (`leagues.py`).
+#:
+#: So the value is not derived, and a guessed one fails in both directions: too
+#: short calls a slow revision a fault, too long lets a row that will never
+#: settle sit as a wait. Measure it against a real settled season before the
+#: first live run rather than assuming it, exactly as the credit cap is to be.
 SETTLEMENT_GRACE_DAYS = 5
 
 
@@ -162,11 +184,11 @@ def render(result: CoverageResult, *, season: int) -> str:
     add(f"# Is the {season} forward ledger intact?")
     add("")
     add(
-        "**The forward ledger is the only evidence this lab can still gather.** "
-        "The bought population is complete and the closing-line series is "
-        "fixed. What is left is 272 games a season across 57 game days, and it "
-        "**cannot be back-dated** — a game day that was never frozen is sample "
-        "that does not exist and cannot be made to."
+        "**The forward ledger is the only evidence this lab can gather going "
+        "forward**, and it **cannot be back-dated** — a game day that was "
+        "never frozen is sample that does not exist and cannot be made to. "
+        "That is why this is an inventory of the asset rather than a health "
+        "check on a workflow."
     )
     add("")
     if not result.days:
@@ -219,9 +241,12 @@ def render(result: CoverageResult, *, season: int) -> str:
     if result.unsettled:
         add(
             f"**An unsettled day past {SETTLEMENT_GRACE_DAYS} days** has frozen "
-            "opinions that never became evidence. Settlement deliberately lags "
-            "— nflverse revises defensive counting stats between Monday and "
-            "Wednesday — but beyond the window the row will never settle."
+            "opinions that never became evidence. Settlement deliberately "
+            "lags, because a results feed revises after the game — but beyond "
+            "the window the row will never settle. **The window itself is "
+            "provisional**: it was inherited from a sibling lab's feed and has "
+            "not been derived from cfbfastR's revision cadence, so read a day "
+            "just past it as a question rather than as a verdict."
         )
         add("")
     add(
