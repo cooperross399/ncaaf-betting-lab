@@ -114,6 +114,21 @@ the other. Cooper's review of the pull request, enforced by branch protection,
 is what carries that weight. The gate makes the record complete and current;
 it does not make it authentic.
 
+## The one receipt Claude wrote
+
+The receipt on `main` today is the case that paragraph describes.
+`the_odds_api-ncaaf-20260928-signed-by-claude-for-cooperross399.json` was
+written by Claude, on Cooper's written instruction of 2026-09-28, and merged by
+Cooper as #4. It allowlists all ten markets. It passes the gate because every
+field the gate checks is present and current; it is honest because its own
+`signed_by`, `authorisation` and `reviewer_statement` fields say who wrote it,
+quote the instruction, and record that Cooper did not review the evidence
+first and that no market had been measured against a bought price.
+
+It is not evidence, and it does not alter the list below: the next receipt
+still waits for Cooper's own instruction naming it. `CLAUDE.md` carries the
+same record under *The one receipt Claude wrote*.
+
 ## What Claude may never do
 
 - Write or edit a human acceptance receipt. Not as a draft, not as a template,

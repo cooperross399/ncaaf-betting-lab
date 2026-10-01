@@ -249,6 +249,9 @@ first commit that touches its area.**
 11. **Nothing is allowlisted, and nothing is bet without a human receipt.**
     Claude prepares the evidence bundle and stops. Its honest default is
     *not supported*.
+    *(2026-10-01: no longer true of the allowlist. All ten markets have been
+    allowlisted since 2026-09-28 by a receipt Claude wrote on Cooper's
+    instruction; `CLAUDE.md`, "The one receipt Claude wrote". Nothing is bet.)*
 
 ---
 
@@ -679,6 +682,10 @@ do not change when the sport does.
 - **Nothing is allowlisted. Nothing is bet.** Claude prepares the evidence
   bundle and stops; its honest default is *not supported*; Cooper signs or does
   not.
+  *(2026-10-01: the first sentence stopped being true on 2026-09-28, when
+  all ten markets were allowlisted by a receipt Claude wrote on Cooper's
+  instruction; see `CLAUDE.md`, "The one receipt Claude wrote". Nothing is
+  bet.)*
 - **Every credit spend is Cooper's**, with the number agreed before it is
   spent.
 - **A number without a sample size is not a result.**
