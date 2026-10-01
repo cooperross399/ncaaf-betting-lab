@@ -186,7 +186,10 @@ def empirical_margin_pmf(
     kernel = np.exp(
         -0.5 * ((grid[:, None] - observed[None, :]) / bandwidth) ** 2
     )
-    kernel = kernel / kernel.sum(axis=0, keepdims=True)
+    # Guarded: a margin far beyond the grid underflows its whole kernel
+    # column to zero, and 0/0 is NaN, which would poison every grid point and
+    # leave an empty shape. Such a margin contributes nothing instead.
+    kernel = kernel / np.maximum(kernel.sum(axis=0, keepdims=True), 1e-300)
     smoothed = (kernel * weights[None, :]).sum(axis=1)
 
     spread = float(np.sqrt((weights * (observed - (weights * observed).sum()) ** 2).sum()))

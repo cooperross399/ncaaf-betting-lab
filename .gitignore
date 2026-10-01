@@ -14,3 +14,13 @@ data/staging/
 
 .pytest_cache/
 *.egg-info/
+
+# The card path's per-run state. The ledger and the snapshots live on the
+# `card-feed` branch, never on main: they are restored from it at the start of
+# a run and published back to it at the end.
+data/archive/
+data/rehearsal_archive/
+data/outputs/ncaaf_card_run.json
+data/outputs/ncaaf_card_previous_selections.json
+data/outputs/ncaaf_gameday_card.md
+data/outputs/ncaaf_provider_fetch.md
