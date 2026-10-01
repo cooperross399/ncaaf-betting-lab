@@ -2369,6 +2369,136 @@ def check_the_suite_step_takes_the_checkout_off_the_path(path: Path) -> None:
         )
 
 
+# --------------------------------------------------------------------------
+# The one workflow that holds a credential and writes, and the rules that
+# REPLACE three of the above for it — by exact file name, never by pattern.
+# --------------------------------------------------------------------------
+
+#: `NCAAF Gameday Refresh` has to read a provider credential, push the frozen
+#: card to `card-feed` and comment on the operating-home issue. Three rules
+#: above forbid exactly that, and rightly for every other workflow: they exist
+#: so the suite provably passes with no credential and no guard can rewrite
+#: what it guards.
+#:
+#: So this is an exemption, and it is written as one rather than as a softer
+#: rule. It names ONE file, by its contract-string path; a copy of that file
+#: under any other name meets the original rules in full
+#: (`test_the_exemption_is_by_exact_name_and_nothing_else`). And each exempted
+#: rule is replaced, for that file, by a narrower one that is itself proved to
+#: fire:
+#:
+#: * permissions are EXACTLY these two scopes, declared once at the top;
+#: * the secrets context is touched EXACTLY once, as this one named secret;
+#: * it is bound in EXACTLY one step's `env:`, under the name the provider code
+#:   reads, and no other mapping at any level binds either credential name;
+#: * the file runs no suite and no gate, and triggers only on a schedule or a
+#:   dispatch — so no credential is ever in scope where the suite runs, and no
+#:   pull request (a fork's included) can reach the step that holds it.
+GAMEDAY_WORKFLOW = "ncaaf-gameday-refresh.yml"
+GAMEDAY_PERMISSIONS = {"contents": "write", "issues": "write"}
+GAMEDAY_SECRET = "NCAAF_ODDS_API_KEY"
+GAMEDAY_BOUND_AS = "FOOTBALL_ODDS_API_KEY"
+GAMEDAY_TRIGGERS = frozenset({"schedule", "workflow_dispatch"})
+
+
+def is_the_gameday_workflow(path: Path) -> bool:
+    return path.name == GAMEDAY_WORKFLOW
+
+
+def check_gameday_permissions_are_exactly_these(path: Path) -> None:
+    document = load(path)
+    assert isinstance(document, dict), f"{path.name} did not parse to a mapping"
+    assert document.get("permissions") == GAMEDAY_PERMISSIONS, (
+        f"{path.name}: top-level permissions are {document.get('permissions')!r}; "
+        f"the exemption is for exactly {GAMEDAY_PERMISSIONS!r} and nothing wider."
+    )
+    nested = [
+        mapping.get("name", "a job")
+        for mapping in mappings(document)
+        if mapping is not document and "permissions" in mapping
+    ]
+    assert not nested, (
+        f"{path.name}: `permissions:` declared again on {nested}. A job-level "
+        "block overrides the top-level one, so it could widen the exemption "
+        "out of sight of the line above."
+    )
+
+
+def check_gameday_references_exactly_one_secret(path: Path) -> None:
+    text = path.read_text(encoding="utf-8")
+    expressions = [
+        expression.group(0)
+        for expression in GITHUB_EXPRESSION.finditer(text)
+        if SECRETS_WORD.search(expression.group(0))
+    ]
+    accessor_count = len(SECRET_REFERENCE.findall(text))
+    wanted = "${{ secrets.%s }}" % GAMEDAY_SECRET
+    assert expressions == [wanted] and accessor_count == 1, (
+        f"{path.name}: the secrets context is reached as {expressions!r} "
+        f"({accessor_count} accessor(s)). The exemption is for exactly one "
+        f"reference, `{wanted}`, and a second — another secret, the whole "
+        "context, or the same one twice — is a widening nobody signed."
+    )
+
+
+def check_gameday_binds_the_credential_in_exactly_one_step(path: Path) -> None:
+    document = load(path)
+    binders = [
+        mapping
+        for mapping in mappings(document)
+        if isinstance(mapping.get("env"), dict)
+        and CREDENTIAL_NAMES.intersection(map(str, mapping["env"]))
+    ]
+    assert len(binders) == 1, (
+        f"{path.name}: {len(binders)} mapping(s) bind a provider credential. "
+        "The exemption is for exactly one step."
+    )
+    step = binders[0]
+    assert "run" in step and "uses" not in step, (
+        f"{path.name}: the credential is bound on {step.get('name', 'a job')!r}, "
+        "which is not a run step. A job- or workflow-level binding puts it in "
+        "scope for every step."
+    )
+    bound = {str(k): v for k, v in step["env"].items() if str(k) in CREDENTIAL_NAMES}
+    assert bound == {GAMEDAY_BOUND_AS: "${{ secrets.%s }}" % GAMEDAY_SECRET}, (
+        f"{path.name}: the step binds {sorted(bound)}; the exemption is for "
+        f"`{GAMEDAY_BOUND_AS}` from `{GAMEDAY_SECRET}` and nothing else."
+    )
+    assert not list(pytest_lines(document)) and not list(gate_lines(document)), (
+        f"{path.name} runs the suite or the gate. The suite's claim is that it "
+        "passes with no credential, so it never runs in the one workflow that "
+        "holds one."
+    )
+    trigger = triggers(document)
+    events = set(trigger) if isinstance(trigger, dict) else set(
+        trigger if isinstance(trigger, list) else [trigger]
+    )
+    assert events and events <= GAMEDAY_TRIGGERS, (
+        f"{path.name} triggers on {sorted(map(str, events))}. Only "
+        f"{sorted(GAMEDAY_TRIGGERS)} may reach a step holding a credential; a "
+        "pull request trigger would hand it to whoever opened the PR."
+    )
+
+
+#: Each exempted rule, and what replaces it for the gameday workflow.
+GAMEDAY_REPLACEMENTS: dict[str, Callable[[Path], None]] = {
+    "permissions_are_declared_and_read_only": (
+        check_gameday_permissions_are_exactly_these
+    ),
+    "no_workflow_references_a_secret": check_gameday_references_exactly_one_secret,
+    "no_env_mapping_binds_a_provider_credential": (
+        check_gameday_binds_the_credential_in_exactly_one_step
+    ),
+}
+
+
+def rule_for(path: Path, rule: str, check: Callable[[Path], None]) -> Callable[[Path], None]:
+    """The check a real workflow is held to: the rule, or its named replacement."""
+    if is_the_gameday_workflow(path) and rule in GAMEDAY_REPLACEMENTS:
+        return GAMEDAY_REPLACEMENTS[rule]
+    return check
+
+
 CHECKS: dict[str, Callable[[Path], None]] = {
     "parses_and_declares_a_trigger": check_parses_and_declares_a_trigger,
     "no_trigger_is_path_filtered": check_no_trigger_is_path_filtered,
@@ -2467,8 +2597,14 @@ def test_no_trigger_is_path_filtered(path: Path) -> None:
 def test_permissions_are_declared_and_read_only(path: Path) -> None:
     """An omitted `permissions:` block inherits the repository default, so
     silence is a route to write access. Named explicitly, and read-only: a
-    guard that can push is a guard that can rewrite the evidence it guards."""
-    check_permissions_are_declared_and_read_only(path)
+    guard that can push is a guard that can rewrite the evidence it guards.
+
+    The gameday workflow is held to its narrower replacement instead; see
+    GAMEDAY_REPLACEMENTS."""
+    rule_for(
+        path, "permissions_are_declared_and_read_only",
+        check_permissions_are_declared_and_read_only,
+    )(path)
 
 
 @every_workflow
@@ -2483,8 +2619,13 @@ def test_no_workflow_references_a_secret(path: Path) -> None:
     """Neither of these workflows needs a credential, and a credential in
     scope is a credential that can leak — into a log, a fork PR, or an action
     nobody audited. Every spelling of the accessor counts — dot, bracket,
-    paren, any casing — and so does one inside a comment."""
-    check_no_workflow_references_a_secret(path)
+    paren, any casing — and so does one inside a comment.
+
+    The gameday workflow is held to its narrower replacement instead; see
+    GAMEDAY_REPLACEMENTS."""
+    rule_for(
+        path, "no_workflow_references_a_secret", check_no_workflow_references_a_secret
+    )(path)
 
 
 @every_workflow
@@ -2499,8 +2640,14 @@ def test_no_env_mapping_binds_a_provider_credential(path: Path) -> None:
     """Checked at every level, because an `env:` on a step is the placement
     that broke the credential assertion in tests.yml: a step-level binding is
     invisible to every other step, so a check standing beside it sees an empty
-    environment and reports all clear."""
-    check_no_env_mapping_binds_a_provider_credential(path)
+    environment and reports all clear.
+
+    The gameday workflow is held to its narrower replacement instead; see
+    GAMEDAY_REPLACEMENTS."""
+    rule_for(
+        path, "no_env_mapping_binds_a_provider_credential",
+        check_no_env_mapping_binds_a_provider_credential,
+    )(path)
 
 
 @every_workflow
@@ -5471,5 +5618,135 @@ def test_a_step_that_reassigns_runner_temp_is_rejected(tmp_path: Path) -> None:
                 "      - name: Run the suite\n",
             ),
             "moved-temp.yml",
+        ),
+    )
+
+
+# --------------------------------------------------------------------------
+# The gameday exemption, proved narrow.
+# --------------------------------------------------------------------------
+
+GAMEDAY_PATH = WORKFLOWS_DIR / GAMEDAY_WORKFLOW
+
+
+def gameday_text() -> str:
+    assert GAMEDAY_PATH.is_file(), (
+        f"{GAMEDAY_PATH} is missing. The exemption names it; an exemption for a "
+        "file that does not exist is a waiver waiting for one to appear."
+    )
+    return GAMEDAY_PATH.read_text(encoding="utf-8")
+
+
+def test_the_exemption_replaces_exactly_three_rules_that_exist() -> None:
+    assert set(GAMEDAY_REPLACEMENTS) == {
+        "permissions_are_declared_and_read_only",
+        "no_workflow_references_a_secret",
+        "no_env_mapping_binds_a_provider_credential",
+    }
+    assert set(GAMEDAY_REPLACEMENTS) <= set(CHECKS)
+
+
+def test_the_exemption_names_exactly_one_real_workflow() -> None:
+    exempt = [path for path in WORKFLOW_FILES if is_the_gameday_workflow(path)]
+    assert [path.name for path in exempt] == [GAMEDAY_WORKFLOW]
+
+
+@pytest.mark.parametrize("rule", sorted(GAMEDAY_REPLACEMENTS))
+def test_the_real_gameday_workflow_passes_its_replacement(rule: str) -> None:
+    GAMEDAY_REPLACEMENTS[rule](GAMEDAY_PATH)
+
+
+@pytest.mark.parametrize("rule", sorted(GAMEDAY_REPLACEMENTS))
+def test_the_exemption_is_by_exact_name_and_nothing_else(
+    tmp_path: Path, rule: str
+) -> None:
+    """The same bytes under any other name meet the original rule, and fail it."""
+    copy = workflow(tmp_path, gameday_text(), "ncaaf-gameday-refresh-copy.yml")
+    assert rule_for(copy, rule, CHECKS[rule]) is CHECKS[rule]
+    assert_rejects(CHECKS[rule], copy)
+
+
+def gameday_mutant(tmp_path: Path, anchor: str, replacement: str) -> Path:
+    text = gameday_text()
+    assert text.count(anchor) == 1, f"anchor {anchor!r} is not unique"
+    return workflow(tmp_path, text.replace(anchor, replacement), GAMEDAY_WORKFLOW)
+
+
+def test_a_third_write_scope_is_rejected(tmp_path: Path) -> None:
+    assert_rejects(
+        check_gameday_permissions_are_exactly_these,
+        gameday_mutant(
+            tmp_path, "  issues: write\n", "  issues: write\n  pull-requests: write\n"
+        ),
+    )
+
+
+def test_a_job_level_permissions_block_is_rejected(tmp_path: Path) -> None:
+    assert_rejects(
+        check_gameday_permissions_are_exactly_these,
+        gameday_mutant(
+            tmp_path, "    runs-on: ubuntu-latest\n",
+            "    runs-on: ubuntu-latest\n    permissions: write-all\n",
+        ),
+    )
+
+
+def test_a_second_secret_is_rejected(tmp_path: Path) -> None:
+    assert_rejects(
+        check_gameday_references_exactly_one_secret,
+        gameday_mutant(
+            tmp_path, "          GH_TOKEN: ${{ github.token }}\n        run: python scripts/card_feed.py restore",
+            "          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}\n        run: python scripts/card_feed.py restore",
+        ),
+    )
+
+
+def test_the_whole_secrets_context_is_rejected(tmp_path: Path) -> None:
+    assert_rejects(
+        check_gameday_references_exactly_one_secret,
+        gameday_mutant(
+            tmp_path, "${{ secrets.NCAAF_ODDS_API_KEY }}", "${{ toJSON(secrets) }}"
+        ),
+    )
+
+
+def test_a_job_level_credential_binding_is_rejected(tmp_path: Path) -> None:
+    assert_rejects(
+        check_gameday_binds_the_credential_in_exactly_one_step,
+        gameday_mutant(
+            tmp_path, "    timeout-minutes: 45\n",
+            "    timeout-minutes: 45\n    env:\n      NCAAF_ODDS_API_KEY: x\n",
+        ),
+    )
+
+
+def test_a_credential_bound_under_its_own_name_is_rejected(tmp_path: Path) -> None:
+    assert_rejects(
+        check_gameday_binds_the_credential_in_exactly_one_step,
+        gameday_mutant(
+            tmp_path,
+            "          FOOTBALL_ODDS_API_KEY: ${{ secrets.NCAAF_ODDS_API_KEY }}\n",
+            "          FOOTBALL_ODDS_API_KEY: ${{ secrets.NCAAF_ODDS_API_KEY }}\n"
+            "          NCAAF_ODDS_API_KEY: copied\n",
+        ),
+    )
+
+
+def test_a_pull_request_trigger_is_rejected(tmp_path: Path) -> None:
+    assert_rejects(
+        check_gameday_binds_the_credential_in_exactly_one_step,
+        gameday_mutant(tmp_path, "  workflow_dispatch:\n", "  pull_request:\n  workflow_dispatch:\n"),
+    )
+
+
+def test_the_suite_in_the_gameday_workflow_is_rejected(tmp_path: Path) -> None:
+    assert_rejects(
+        check_gameday_binds_the_credential_in_exactly_one_step,
+        gameday_mutant(
+            tmp_path,
+            "        run: python scripts/card_feed.py restore\n",
+            "        run: python scripts/card_feed.py restore\n"
+            "      - name: Run the suite\n"
+            '        run: python -m pytest -q -rs --junit-xml="$RUNNER_TEMP/junit.xml"\n',
         ),
     )

@@ -1,0 +1,173 @@
+name: NCAAF Gameday Refresh
+
+# THE NAME, THE FILE NAME, THE `card-feed` BRANCH AND THE SECRET'S NAME ARE
+# CONTRACT STRINGS (CLAUDE.md, the contract table; tests/test_contract_strings.py).
+# A rename does not raise: the scheduled run stops arriving, and that looks
+# exactly like the lab going quiet.
+#
+# What this does, once per league day: fetch today's college slate, price it
+# from the market-anchored shapes, freeze every opinion into a dated snapshot,
+# settle the days that are final, render the card, publish it to `card-feed`,
+# and post it to the operating-home issue.
+#
+# What it never does: allowlist a market, sign a receipt, place a bet, or
+# spend past the agreed cap. The cap is 1,200 credits a day, agreed by Cooper
+# on 2026-10-01 and held in the league registry; the card refuses a larger
+# `--credit-cap`, and the adapter checks the pessimistic bound before every
+# request.
+#
+# THIS IS THE ONE WORKFLOW HERE THAT HOLDS A CREDENTIAL AND WRITES. Every rule
+# in tests/test_workflows.py applies to it except three, and each of those is
+# REPLACED for this file by a narrower rule, not dropped:
+#   * permissions are exactly `contents: write` and `issues: write`;
+#   * exactly one secret is referenced, NCAAF_ODDS_API_KEY, exactly once;
+#   * it is bound in exactly one step's `env:`, as FOOTBALL_ODDS_API_KEY, the
+#     name the provider code reads, and in no other mapping.
+# It runs no suite and no gate, so `Tests` stays the only required check and
+# no credential is ever in scope where the suite runs.
+#
+# Every step is one Python command. The swallow rule executes each run block
+# with every command stubbed to fail, so "the branch may not exist yet" cannot
+# be written as shell; scripts/card_feed.py asks it as a question with three
+# answers, and "could not tell" is an error.
+
+"on":
+  schedule:
+    # MANY TRIGGERS; THE FIRST ONE TO RUN CARDS THE DAY. Measured in the
+    # sibling NFL lab (n = 11 scheduled firings): GitHub fired none on time,
+    # 115 to 443 minutes late, median 218. A college noon kickoff is 16:00 UTC,
+    # so a single trigger is a hope rather than a schedule. Every trigger after
+    # the first clean publish reads one file from `card-feed` and exits without
+    # fetching a price. Do not tidy these into fewer.
+    - cron: "0 9 * 8-12,1 *"
+    - cron: "0 10 * 8-12,1 *"
+    - cron: "0 11 * 8-12,1 *"
+    - cron: "0 12 * 8-12,1 *"
+    - cron: "0 13 * 8-12,1 *"
+    - cron: "0 14 * 8-12,1 *"
+    - cron: "0 15 * 8-12,1 *"
+    - cron: "0 16 * 8-12,1 *"
+    - cron: "0 17 * 8-12,1 *"
+    - cron: "0 18 * 8-12,1 *"
+    - cron: "0 19 * 8-12,1 *"
+    - cron: "0 20 * 8-12,1 *"
+    - cron: "0 21 * 8-12,1 *"
+  workflow_dispatch:
+    inputs:
+      credit_cap:
+        description: "Hard credit cap for this run (refused above the registered 1,200)"
+        required: true
+        default: "1200"
+      tier:
+        description: "Market tier (2 = all ten markets, as agreed)"
+        required: true
+        default: "2"
+      rehearsal_slate_date:
+        description: "Rehearse a league date (YYYY-MM-DD). Blank for a real run. A rehearsal never touches the ledger, the feed or the issue."
+        required: false
+        default: ""
+      respect_standdown:
+        description: "Stand down if today's card already published, as a scheduled trigger does. Leave false to run regardless."
+        required: false
+        default: "false"
+
+permissions:
+  # Write for one ref, the card-feed branch, built with git plumbing so only
+  # named files can reach it. Nothing here pushes to main or opens a PR.
+  contents: write
+  # To comment on the operating-home issue, so a broken day reaches a human.
+  issues: write
+
+concurrency:
+  group: ncaaf-gameday-refresh
+  cancel-in-progress: false
+
+jobs:
+  card:
+    name: NCAAF Gameday Refresh
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+          python -m pip install -e .
+
+      - name: Already published today?
+        id: standdown
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESPECT: ${{ github.event_name == 'schedule' || inputs.respect_standdown == 'true' }}
+        run: python scripts/card_feed.py standdown --respect-standdown "$RESPECT"
+
+      - name: Restore the ledger and the snapshots from card-feed
+        if: steps.standdown.outputs.run == 'yes'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/card_feed.py restore
+
+      - name: Fetch schedules and build the line table
+        if: steps.standdown.outputs.run == 'yes'
+        env:
+          PYTHONPATH: src
+        run: |
+          python scripts/fetch_ncaaf_data.py --seasons 2021 2022 2023 2024 2025 2026
+          python scripts/build_line_table.py --seasons 2021 2022 2023 2024 2025
+
+      - name: Fetch, price, freeze and settle
+        if: steps.standdown.outputs.run == 'yes'
+        env:
+          PYTHONPATH: src
+          # The one credential binding in this repository's CI. The GitHub
+          # secret is NCAAF_ODDS_API_KEY; the provider code reads
+          # FOOTBALL_ODDS_API_KEY (inherited from the port). Mapped here and
+          # nowhere else.
+          FOOTBALL_ODDS_API_KEY: ${{ secrets.NCAAF_ODDS_API_KEY }}
+          CREDIT_CAP: ${{ inputs.credit_cap || '1200' }}
+          TIER: ${{ inputs.tier || '2' }}
+          REHEARSAL_DATE: ${{ inputs.rehearsal_slate_date }}
+        run: >-
+          python scripts/run_gameday_card.py --live
+          --credit-cap "$CREDIT_CAP" --tier "$TIER"
+          --rehearsal-date "$REHEARSAL_DATE"
+
+      - name: Publish to the card-feed branch
+        # Never on a rehearsal: its slate date would stand the real run down.
+        if: always() && steps.standdown.outputs.run == 'yes' && inputs.rehearsal_slate_date == ''
+        env:
+          PYTHONPATH: src
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.run_id }}
+        run: python scripts/card_feed.py publish --run-id "$RUN_ID"
+
+      - name: Post to the operating home
+        if: always() && steps.standdown.outputs.run == 'yes' && inputs.rehearsal_slate_date == ''
+        env:
+          PYTHONPATH: src
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: python scripts/card_feed.py post --run-url "$RUN_URL"
+
+      - name: Upload the reports
+        if: always() && steps.standdown.outputs.run == 'yes'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ncaaf-gameday-card
+          path: |
+            data/outputs/
+            data/processed/forward_evidence.csv
+            data/archive/priced_snapshots/
+          if-no-files-found: error
+          retention-days: 90

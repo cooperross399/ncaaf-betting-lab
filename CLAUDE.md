@@ -48,8 +48,17 @@ no key, no rate limit) with schedules for 2021-2026 cached under `data/raw/`.
 The league registry, the market registry, the fail-closed provider policy
 loader, the coverage precondition, the kickoff guard, `selection_key()`, the
 margin model, the power and positive-control instruments, the append-only
-experiment ledger, and six report modules. Two workflows: `Tests` and
-`Ledger Guard`. **Every module under `src/` and `scripts/` imports** — a weaker
+experiment ledger, and six report modules. **The card path**, added
+2026-10-01: team identity by id (`providers/team_names.py`, `fixtures.py`), the
+provider adapter (`providers/odds_api.py`), measured margin and total shapes
+anchored on the market's consensus line (`models/shapes.py`, `models/total.py`,
+`reports/card_pricing.py`), the card (`reports/gameday_card.py`), the forward
+ledger (`forward_evidence.py`), and `scripts/run_gameday_card.py` /
+`scripts/card_feed.py` to run and publish it. Three workflows: `Tests`,
+`Ledger Guard`, and `NCAAF Gameday Refresh` — the one that holds a credential
+and writes, under a scoped exemption in `tests/test_workflows.py`
+(`GAMEDAY_REPLACEMENTS`) that replaces three rules for that one file with
+narrower ones, each proved to fire. **Every module under `src/` and `scripts/` imports** — a weaker
 claim than it looks, and one that was false until it was enforced; see below.
 **The suite
 passes with ZERO skips** on a clean
@@ -135,22 +144,21 @@ nothing about what the module then does. The byte-compile step in `tests.yml`
 is now largely subsumed by it and is kept anyway, because it runs before the
 suite and does not depend on pytest collecting anything.
 
-**Does not exist.** There is **no card and no live selection.** **No provider
-fetch has ever run**: nothing has been asked of The Odds API, no price has been
-bought, no event id is cached. **All ten markets are nevertheless
-allowlisted**, and have been since 2026-09-28: `data/manual/staging_provider_policy.json`
-lists them as `allowed`, and the receipt it cites approves them. That receipt
-was written by Claude on Cooper's instruction, not by Cooper — see *The one
-receipt Claude wrote* below. Allowlisted is not able-to-pick: with no card and
-no fetch, nothing can be selected, and nothing outside the policy module and
-its PR gate reads the policy at all. Until 2026-10-01 the policy file's own
-prose still called the entry an unsigned proposal that "allowlisted nothing"
-while its fields, which are what `market_allowed()` reads, said the opposite.
-**Every market's `retained` field is `None`** — no retention probe has run for
-college football, so no market here is known to be quoted by anybody. `None`
-means unprobed: `False` would be a finding and `True` would be a guess. The
-`daily_credit_cap` of 4,000 in the registry is marked provisional and has not
-been derived from a real schedule against a real market list.
+**Does not exist yet.** **No provider fetch has ever run**: the card path is
+code, and the first fetch happens on the first `NCAAF Gameday Refresh` run with
+the `NCAAF_ODDS_API_KEY` secret set. Until then no price has been bought and no
+event id is cached. **All ten markets are allowlisted**, and have been since
+2026-09-28, by a receipt Claude wrote on Cooper's instruction — see *The one
+receipt Claude wrote* below. Once the workflow runs, **the card can print
+selections**, and each one is an opinion that cleared the card's bars with **no
+demonstrated edge**; the card says so above every selection table, in those
+words. Only the spread, total, moneyline and their ladders carry an opinion;
+team totals and the first-half markets are priced as no-opinion with a stated
+reason. **Every market's `retained` field is `None`** — no retention probe has
+run for college football. `None` means unprobed: `False` would be a finding and
+`True` would be a guess. The `daily_credit_cap` is **1,200**, agreed by Cooper
+on 2026-10-01 and derived from the real schedule by
+`scripts/estimate_credit_cost.py` (`data/outputs/ncaaf_credit_cost.md`).
 
 Do not write prose that implies otherwise. Every claim this lab will ever make
 about college football rests on evidence that does not exist yet.

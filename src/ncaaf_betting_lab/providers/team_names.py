@@ -40,6 +40,9 @@ today".
 from __future__ import annotations
 
 import csv
+import re
+import unicodedata
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -71,13 +74,165 @@ class Membership:
         text = str(name or "").strip()
         if not text:
             return UNRESOLVED
-        return self.aliases.get(text.casefold(), UNRESOLVED)
+        found = self.aliases.get(text.casefold())
+        if found is None:
+            found = self.aliases.get(fold(text), UNRESOLVED)
+        return found
 
     def is_fbs(self, resolved: str) -> bool:
         return resolved in self.teams
 
     def __len__(self) -> int:
         return len(self.teams)
+
+
+_PUNCTUATION = re.compile(r"[.'’`]")
+_SPACES = re.compile(r"\s+")
+
+
+def fold(name: object) -> str:
+    """A name reduced to what two spellings of one team share.
+
+    Accents, apostrophes, full stops, case and runs of whitespace go, and a
+    hyphen reads as a space; nothing else does. `San José State` and `San Jose State`, `Hawai'i` and `Hawaii`,
+    `St. Thomas` and `St Thomas` fold together. `Miami` and `Miami (OH)` do
+    NOT — the parenthesis is identity, and folding it away would put two
+    schools behind one key.
+    """
+    text = unicodedata.normalize("NFKD", str(name or ""))
+    text = "".join(ch for ch in text if not unicodedata.combining(ch))
+    text = _PUNCTUATION.sub("", text).replace("-", " ")
+    return _SPACES.sub(" ", text).strip().casefold()
+
+
+#: Fields of the teams file that are a NAME for the team. The abbreviation is
+#: deliberately absent: across all college teams it is not unique (`OSU` is
+#: Ohio State and Ohio State Newark), and the provider never sends one.
+_NAME_FIELDS = ("school", "alt_name1", "alt_name2", "alt_name3")
+
+
+def _aliases_for(names: Iterable[str], mascot: str) -> set[str]:
+    """Every folded spelling a provider might send for one team.
+
+    The provider names a college team as school plus mascot — `Alabama Crimson
+    Tide` — where the schedule feed says `Alabama`. Both are generated, along
+    with `State`/`St` variants, because the provider and the feed disagree on
+    that abbreviation for a dozen schools and a mismatch reads as an unknown
+    team rather than as a spelling.
+    """
+    out: set[str] = set()
+    for name in names:
+        base = fold(name)
+        if not base:
+            continue
+        bases = {base}
+        if base.endswith(" state"):
+            bases.add(base[: -len(" state")] + " st")
+        if base.endswith(" st"):
+            bases.add(base + "ate")
+        for variant in bases:
+            out.add(variant)
+            if mascot:
+                out.add(f"{variant} {fold(mascot)}")
+    return out
+
+
+@dataclass
+class MembershipBuild:
+    """What `build_membership` wrote, and what it refused to write."""
+
+    path: Path
+    fbs_teams: int
+    other_teams: int
+    #: Aliases that would have named two different teams, dropped from BOTH.
+    #: A collision resolved by whichever row came first is a team silently
+    #: priced as another one; resolved by neither it is a name the card
+    #: reports as unmatched, which a human can fix in one line.
+    collisions: tuple[str, ...]
+
+
+def build_membership(
+    league: League,
+    raw_dir: Path,
+    *,
+    season: int,
+    fbs: Mapping[str, str],
+    teams: Iterable[Mapping[str, str]],
+    extra_aliases: Mapping[str, str] | None = None,
+) -> MembershipBuild:
+    """Write this season's membership cache from the schedule and the names file.
+
+    `fbs` is `{team id: schedule name}` for every team the season's own
+    schedule places in FBS — the only source of classification. `teams` is the
+    names file, which supplies mascots and alternate names and classifies
+    nothing: a team it lists that this season's schedule does not place in FBS
+    is written as non-FBS, so it resolves to `FCS` and lands in the unrated
+    bucket rather than being priced.
+
+    `extra_aliases` maps a provider spelling to a team id, for the names the
+    generated variants miss. It comes from a reviewed file, never a guess.
+    """
+    by_id = {str(row.get("team_id", "")).strip(): row for row in teams}
+    targets: dict[str, set[str]] = {}
+
+    def claim(alias: str, team_id: str) -> None:
+        targets.setdefault(alias, set()).add(team_id)
+
+    for team_id, name in fbs.items():
+        row = by_id.get(team_id, {})
+        names = [name] + [str(row.get(field, "")) for field in _NAME_FIELDS]
+        for alias in _aliases_for(names, str(row.get("mascot", ""))):
+            claim(alias, team_id)
+    for team_id, row in by_id.items():
+        if not team_id or team_id in fbs:
+            continue
+        names = [str(row.get(field, "")) for field in _NAME_FIELDS]
+        for alias in _aliases_for(names, str(row.get("mascot", ""))):
+            claim(alias, team_id)
+    for alias, team_id in (extra_aliases or {}).items():
+        folded = fold(alias)
+        if folded:
+            # A reviewed alias is a decision, so it replaces whatever the
+            # generator thought rather than colliding with it.
+            targets[folded] = {str(team_id).strip()}
+
+    collisions = tuple(sorted(a for a, ids in targets.items() if len(ids) > 1))
+    path = membership_path(league, raw_dir, season=season)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rows: list[dict[str, str]] = []
+    for alias, ids in sorted(targets.items()):
+        if len(ids) != 1:
+            continue
+        (team_id,) = tuple(ids)
+        if team_id in fbs:
+            name, classification = fbs[team_id], "fbs"
+        else:
+            name = str(by_id.get(team_id, {}).get("school", "")) or team_id
+            classification = "other"
+        rows.append(
+            {"team_id": team_id, "name": name, "classification": classification,
+             "alias": alias, "abbreviation": ""}
+        )
+    # FBS teams with no surviving alias still need a row, or the team would
+    # vanish from `Membership.teams` and every fixture it plays would read as
+    # unresolved for a reason nobody could see.
+    present = {row["team_id"] for row in rows}
+    for team_id, name in fbs.items():
+        if team_id not in present:
+            rows.append({"team_id": team_id, "name": name, "classification": "fbs",
+                         "alias": "", "abbreviation": ""})
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(
+            handle, fieldnames=["team_id", "name", "classification", "alias", "abbreviation"]
+        )
+        writer.writeheader()
+        writer.writerows(rows)
+    return MembershipBuild(
+        path=path,
+        fbs_teams=len(fbs),
+        other_teams=len({r["team_id"] for r in rows} - set(fbs)),
+        collisions=collisions,
+    )
 
 
 def membership_path(league: League, raw_dir: Path, *, season: int) -> Path:

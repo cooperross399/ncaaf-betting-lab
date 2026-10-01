@@ -125,13 +125,14 @@ NCAAF = League(
     # Saturday midnight. Eastern is the calendar the schedule is published in;
     # it is not a claim that the day is shaped like an NFL Sunday.
     timezone=ZoneInfo("America/New_York"),
-    # PROVISIONAL, and marked so. The NFL cap was derived by
-    # `scripts/estimate_credit_cost.py` from its real schedule and its real
-    # market list; neither exists here yet. A college Saturday carries far more
-    # games than an NFL Sunday, so this will move — and a cap below the worst
-    # slate starves the fetch, which looks identical in the reports to a market
-    # nobody quotes. Derive it before the first live run.
-    daily_credit_cap=4_000,
+    # Agreed by Cooper on 2026-10-01 for all ten markets. Checked against the
+    # real 2026 schedule and market list by `scripts/estimate_credit_cost.py`,
+    # which writes
+    # `data/outputs/ncaaf_credit_cost.md` and fails if the worst day's bound
+    # exceeds this. A cap below the worst slate starves the fetch part-way
+    # through, which looks in the reports exactly like a market nobody quoted.
+    # Raising it is Cooper's decision; the card refuses a --credit-cap above it.
+    daily_credit_cap=1_200,
 )
 
 LEAGUES: dict[str, League] = {NCAAF.key: NCAAF}

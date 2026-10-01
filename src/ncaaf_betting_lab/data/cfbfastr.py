@@ -69,6 +69,18 @@ SCHEDULE_URL = BASE_URL + "/schedules/csv/cfb_schedules_{season}.csv"
 
 SCHEDULE_FILENAME = "cfb_schedules_{season}.csv"
 
+#: Every college team the feed knows, with its mascot and alternate names.
+#: One file, not per season: it is the NAME source, and which teams are FBS in
+#: a given season comes from that season's schedule, never from here.
+TEAMS_URL = BASE_URL + "/teams/teams_colors_logos.csv"
+TEAMS_FILENAME = "teams_colors_logos.csv"
+
+#: The teams file is NOT UTF-8. Measured 2026-10-01: byte 0xE9 (`é` in
+#: Latin-1) sits in `San José State`'s row and a UTF-8 read raises on it.
+#: Reading it as UTF-8 with errors ignored would silently turn the name into
+#: `San Jos State`, which then resolves nothing.
+TEAMS_ENCODING = "latin-1"
+
 #: The division string cfbfastR writes for top-tier college football.
 FBS = "fbs"
 
@@ -99,6 +111,15 @@ class Game:
     away_division: str
     home_points: float | None
     away_points: float | None
+    #: The feed's own team ids. Identity, where the names above are display:
+    #: settlement and team resolution join on these, never on a spelling.
+    #: Defaulted because a hand-built fixture without them is still a game;
+    #: a real schedule file always carries both.
+    home_id: str = ""
+    away_id: str = ""
+    #: The feed flags a start time it has not set. The timestamp beside it is
+    #: a placeholder, not a kickoff (`coverage.KICKOFF_UNKNOWN`).
+    start_time_tbd: bool = False
 
     @property
     def involves_fbs(self) -> bool:
@@ -180,6 +201,39 @@ def fetch_schedule(
     return target
 
 
+def teams_path(league: League, raw_dir: Path) -> Path:
+    return Path(raw_dir) / league.data_dir_segment / "teams" / TEAMS_FILENAME
+
+
+def fetch_teams(league: League, raw_dir: Path, *, timeout: int = 60) -> Path:
+    """Download the team names file. Spends no provider credits."""
+    target = teams_path(league, raw_dir)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    staging = target.with_suffix(".partial")
+    with urlopen(TEAMS_URL, timeout=timeout) as response:  # noqa: S310 - fixed host
+        staging.write_bytes(response.read())
+    if staging.stat().st_size == 0:
+        staging.unlink(missing_ok=True)
+        raise OSError(f"{TEAMS_URL} returned an empty file; nothing was written.")
+    staging.replace(target)
+    return target
+
+
+def load_teams(league: League, raw_dir: Path) -> list[dict[str, str]]:
+    """Every row of the teams file, as text. Raises when it is absent."""
+    path = teams_path(league, raw_dir)
+    if not path.is_file():
+        raise FileNotFoundError(
+            f"No teams file at {path}. Fetch it with "
+            "`scripts/fetch_ncaaf_data.py` before resolving a provider name."
+        )
+    with path.open(newline="", encoding=TEAMS_ENCODING) as handle:
+        return [
+            {key: str(value or "").strip() for key, value in row.items() if key}
+            for row in csv.DictReader(handle)
+        ]
+
+
 def _to_float(value: object) -> float | None:
     text = str(value or "").strip()
     if not text or text.upper() in {"NA", "NAN", "NULL"}:
@@ -188,6 +242,17 @@ def _to_float(value: object) -> float | None:
         return float(text)
     except ValueError:
         return None
+
+
+def _to_id(value: object) -> str:
+    """A team id as a plain integer string, or empty.
+
+    Ids arrive as `2628` in one file and `2628.0` in another, and a join
+    between the two spellings matches nothing while looking like an answer —
+    `build_line_table.py` records exactly that, zero of 3,154 games.
+    """
+    number = _to_float(value)
+    return "" if number is None else str(int(number))
 
 
 def _to_bool(value: object) -> bool:
@@ -234,6 +299,9 @@ def load_schedule(league: League, raw_dir: Path, *, season: int) -> list[Game]:
                     away_division=str(row["away_division"]).strip().lower(),
                     home_points=_to_float(row["home_points"]),
                     away_points=_to_float(row["away_points"]),
+                    home_id=_to_id(row.get("home_id")),
+                    away_id=_to_id(row.get("away_id")),
+                    start_time_tbd=_to_bool(row.get("start_time_tbd")),
                 )
             )
     return games
