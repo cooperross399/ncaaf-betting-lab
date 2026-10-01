@@ -143,9 +143,9 @@ lists them as `allowed`, and the receipt it cites approves them. That receipt
 was written by Claude on Cooper's instruction, not by Cooper — see *The one
 receipt Claude wrote* below. Allowlisted is not able-to-pick: with no card and
 no fetch, nothing can be selected, and nothing outside the policy module and
-its PR gate reads the policy at all. Note that the policy file's own prose
-still describes the entry as an unsigned proposal that "allowlists nothing";
-its fields say the opposite, and its fields are what `market_allowed()` reads.
+its PR gate reads the policy at all. Until 2026-10-01 the policy file's own
+prose still called the entry an unsigned proposal that "allowlisted nothing"
+while its fields, which are what `market_allowed()` reads, said the opposite.
 **Every market's `retained` field is `None`** — no retention probe has run for
 college football, so no market here is known to be quoted by anybody. `None`
 means unprobed: `False` would be a finding and `True` would be a guess. The
