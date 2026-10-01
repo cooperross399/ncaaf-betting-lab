@@ -31,8 +31,12 @@ far is short: **every measured result to date is a null.**
   paying strategy needs, so ratings do not re-enter the architecture. The late-
   season split (**n = 2,183**) has an upper bound of +0.1647 and rules nothing
   out in either direction (`data/outputs/ratings_residual.md`).
-* The cumulative ledger stands at **78 distinct hypotheses**, which widens any
-  new 95% interval by **x1.742** (`data/outputs/experiment_ledger.json`).
+* The cumulative ledger stands at **92 distinct hypotheses**, which widens any
+  new 95% interval by **x1.76** (`data/outputs/experiment_ledger.md`, rendered
+  from `data/outputs/experiment_ledger.json`; checked 2026-10-01). This line
+  read 78 and x1.742 until then — the figures from before the opener study
+  added 14 — and nothing compared the two. The ledger is the record; this
+  sentence is a copy of it.
 
 ### What exists today, and what does not
 
@@ -133,8 +137,15 @@ suite and does not depend on pytest collecting anything.
 
 **Does not exist.** There is **no card and no live selection.** **No provider
 fetch has ever run**: nothing has been asked of The Odds API, no price has been
-bought, no event id is cached. `data/manual/staging_provider_policy.json` is
-absent, so the policy allows nothing, which is its correct shipping state.
+bought, no event id is cached. **All ten markets are nevertheless
+allowlisted**, and have been since 2026-09-28: `data/manual/staging_provider_policy.json`
+lists them as `allowed`, and the receipt it cites approves them. That receipt
+was written by Claude on Cooper's instruction, not by Cooper — see *The one
+receipt Claude wrote* below. Allowlisted is not able-to-pick: with no card and
+no fetch, nothing can be selected, and nothing outside the policy module and
+its PR gate reads the policy at all. Note that the policy file's own prose
+still describes the entry as an unsigned proposal that "allowlists nothing";
+its fields say the opposite, and its fields are what `market_allowed()` reads.
 **Every market's `retained` field is `None`** — no retention probe has run for
 college football, so no market here is known to be quoted by anybody. `None`
 means unprobed: `False` would be a finding and `True` would be a guess. The
@@ -297,6 +308,31 @@ from the NFL's sixteen-game Sunday.
 Related and non-negotiable: nothing here places a bet, automates one, or signs
 a receipt on Cooper's behalf.
 
+### The one receipt Claude wrote
+
+Recorded because the rule above and the state of `main` disagree, and a
+session that reads only one of them will describe the other wrongly.
+
+On 2026-09-28 Cooper instructed Claude in writing to sign on his behalf ("I am
+givin full permission for you to sign for me as i already have done before"),
+chose all five open allowlist proposals across the labs, and said "go".
+Claude wrote
+`data/manual/human_acceptance_receipts/the_odds_api-ncaaf-20260928-signed-by-claude-for-cooperross399.json`,
+filled in the policy entry, and Cooper merged it as #4. All ten NCAAF markets
+have been allowlisted since.
+
+What the receipt is, from its own fields: `signed_by` names Claude, the
+instruction is quoted, and `reviewer_statement` says Cooper did not review the
+evidence first and that no evidence bundle, no provider fetch and no priced
+measurement exists. It records an owner's decision, not a finding. The PR gate
+passes it because the gate checks that a record is complete and current, never
+that a human wrote it (`docs/provider_allowlist_approval.md`).
+
+What it does not change: the rule above is still the rule. A delegation given
+for one signing is not read here as standing permission for the next; a new
+receipt, or a widening of this one, waits for Cooper's own instruction naming
+it.
+
 ---
 
 ## Standing statistical discipline
@@ -314,10 +350,11 @@ a slope that would pay.
 **Corrections come from the cumulative experiment ledger, never from today's
 batch.** A search that runs every week is not twelve tests, it is twelve tests
 a week forever, and correcting a Sunday's findings across the twelve things
-tested that Sunday is a lie. The ledger holds **78 hypotheses** across four
-searches (steps-2-to-5: 66, margin-architecture: 5, margin-shape: 4,
-ratings-residual: 3) and hands back a Bonferroni widening of **x1.742** on any
-new 95% interval. It is append-only, enforced twice — `save()` refuses a
+tested that Sunday is a lie. The ledger holds **92 hypotheses** across six
+searches (steps-2-to-5: 66, opener-study-unregistered: 10, margin-architecture:
+5, margin-shape: 4, opener-study: 4, ratings-residual: 3) and hands back a
+Bonferroni widening of **x1.76** on any new 95% interval
+(`data/outputs/experiment_ledger.md`, checked 2026-10-01). It is append-only, enforced twice — `save()` refuses a
 shrinking write at runtime, and the `Ledger Guard` workflow refuses a PR in
 which an entry was removed or rewritten. The tempting edit is to drop the
 failed tests as exploratory; the failed tests are exactly what make a surviving
