@@ -1,1 +1,29 @@
-[]
+[
+  {
+    "game": "Pittsburgh Panthers @ Virginia Tech Hokies",
+    "market": "alternate_spread",
+    "selection": "home",
+    "line": -16.5,
+    "odds": 581,
+    "book": "draftkings",
+    "edge": 0.0390565115906269
+  },
+  {
+    "game": "Pittsburgh Panthers @ Virginia Tech Hokies",
+    "market": "alternate_spread",
+    "selection": "home",
+    "line": -14.5,
+    "odds": 499,
+    "book": "draftkings",
+    "edge": 0.038045214319945564
+  },
+  {
+    "game": "Pittsburgh Panthers @ Virginia Tech Hokies",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -11.5,
+    "odds": 547,
+    "book": "draftkings",
+    "edge": 0.03749071877111418
+  }
+]
