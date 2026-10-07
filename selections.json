@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "game": "Jacksonville State Gamecocks @ Kennesaw State Owls",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -10.5,
+    "odds": 250,
+    "book": "fanduel",
+    "edge": 0.03628462187185755
+  }
+]
