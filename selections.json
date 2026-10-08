@@ -1,11 +1,65 @@
 [
   {
-    "game": "Jacksonville State Gamecocks @ Kennesaw State Owls",
+    "game": "Missouri State Bears @ Western Kentucky Hilltoppers",
+    "market": "alternate_spread",
+    "selection": "home",
+    "line": -13.5,
+    "odds": 544,
+    "book": "draftkings",
+    "edge": 0.055756695394560296
+  },
+  {
+    "game": "Missouri State Bears @ Western Kentucky Hilltoppers",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -11.5,
+    "odds": 528,
+    "book": "draftkings",
+    "edge": 0.04532284586440505
+  },
+  {
+    "game": "Missouri State Bears @ Western Kentucky Hilltoppers",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -12.5,
+    "odds": 593,
+    "book": "draftkings",
+    "edge": 0.04491241725329073
+  },
+  {
+    "game": "Missouri State Bears @ Western Kentucky Hilltoppers",
     "market": "alternate_spread",
     "selection": "away",
     "line": -10.5,
-    "odds": 250,
-    "book": "fanduel",
-    "edge": 0.03628462187185755
+    "odds": 465,
+    "book": "draftkings",
+    "edge": 0.044534682904781214
+  },
+  {
+    "game": "Missouri State Bears @ Western Kentucky Hilltoppers",
+    "market": "alternate_spread",
+    "selection": "home",
+    "line": -12.5,
+    "odds": 487,
+    "book": "draftkings",
+    "edge": 0.043867716995982325
+  },
+  {
+    "game": "Missouri State Bears @ Western Kentucky Hilltoppers",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -9.5,
+    "odds": 380,
+    "book": "draftkings",
+    "edge": 0.0393566722042826
+  },
+  {
+    "game": "Missouri State Bears @ Western Kentucky Hilltoppers",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -8.5,
+    "odds": 352,
+    "book": "draftkings",
+    "edge": 0.03557867598130665
   }
 ]
