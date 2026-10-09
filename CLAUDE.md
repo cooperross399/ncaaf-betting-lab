@@ -31,12 +31,21 @@ far is short: **every measured result to date is a null.**
   paying strategy needs, so ratings do not re-enter the architecture. The late-
   season split (**n = 2,183**) has an upper bound of +0.1647 and rules nothing
   out in either direction (`data/outputs/ratings_residual.md`).
-* The cumulative ledger stands at **92 distinct hypotheses**, which widens any
-  new 95% interval by **x1.76** (`data/outputs/experiment_ledger.md`, rendered
-  from `data/outputs/experiment_ledger.json`; checked 2026-10-01). This line
-  read 78 and x1.742 until then — the figures from before the opener study
-  added 14 — and nothing compared the two. The ledger is the record; this
-  sentence is a copy of it.
+* The cumulative ledger stands at **95 distinct hypotheses**, which widens any
+  new 95% interval by **x1.77** (`data/outputs/experiment_ledger.json`;
+  checked 2026-10-09). It read 92 and x1.76 until the nightly-form study added
+  three, and 78 and x1.742 before the opener study added 14. The ledger is the
+  record; this sentence is a copy of it. **`experiment_ledger.md` still renders
+  92**, on purpose: the allowlist receipt pins its checksum as evidence, so
+  re-rendering it fails the policy gate until Cooper decides whether the
+  receipt's evidence is refreshed. Read the JSON.
+* A **nightly form rating** and a **quarterback-change flag**, learned from
+  each night's results and cfbfastR's free play-level file, were registered
+  (`docs/preregistered_nightly_form.md`) and measured on 2022-2025 before
+  reaching the card: **no demonstrated edge** against the close (n = 3,126) or
+  the open (n = 3,117), and the starter flag too (n = 2,322)
+  (`data/outputs/nightly_form.md`). The card prints both beside the price as
+  context; neither moves a probability.
 
 ### What exists today, and what does not
 
@@ -358,11 +367,11 @@ a slope that would pay.
 **Corrections come from the cumulative experiment ledger, never from today's
 batch.** A search that runs every week is not twelve tests, it is twelve tests
 a week forever, and correcting a Sunday's findings across the twelve things
-tested that Sunday is a lie. The ledger holds **92 hypotheses** across six
+tested that Sunday is a lie. The ledger holds **95 hypotheses** across seven
 searches (steps-2-to-5: 66, opener-study-unregistered: 10, margin-architecture:
-5, margin-shape: 4, opener-study: 4, ratings-residual: 3) and hands back a
-Bonferroni widening of **x1.76** on any new 95% interval
-(`data/outputs/experiment_ledger.md`, checked 2026-10-01). It is append-only, enforced twice — `save()` refuses a
+5, margin-shape: 4, opener-study: 4, ratings-residual: 3, nightly-form: 3) and
+hands back a Bonferroni widening of **x1.77** on any new 95% interval
+(`data/outputs/experiment_ledger.json`, checked 2026-10-09). It is append-only, enforced twice — `save()` refuses a
 shrinking write at runtime, and the `Ledger Guard` workflow refuses a PR in
 which an entry was removed or rewritten. The tempting edit is to drop the
 failed tests as exploratory; the failed tests are exactly what make a surviving

@@ -1195,6 +1195,42 @@
         2025
       ],
       "outcome": "not pre-registered AND post-hoc selected: the arm was chosen after seeing which segment moved most, and the interval does not account for that selection. slope - 1 = -0.0964, SE 0.1374, n = 1,154 over 20 clusters; interval includes zero. Floor 0.5865 above the 0.5091 that would pay \u2014 an absence."
+    },
+    {
+      "search": "nightly-form",
+      "name": "form-ratings-vs-close",
+      "tested_on": "2026-10-09",
+      "seasons": [
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; slope +0.0018, SE 0.0328, n = 3,126 games over 65 clusters, corrected interval [-0.1119, +0.1155]; registered POSITIVE, pays at +0.136, detects 0.141; 2025 alone -0.0114 (n = 806)."
+    },
+    {
+      "search": "nightly-form",
+      "name": "form-ratings-vs-open",
+      "tested_on": "2026-10-09",
+      "seasons": [
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; slope +0.0071, SE 0.0356, n = 3,117 games over 65 clusters, corrected interval [-0.1163, +0.1305]; registered POSITIVE, pays at +0.140, detects 0.153; 2025 alone -0.0143 (n = 806)."
+    },
+    {
+      "search": "nightly-form",
+      "name": "qb-change-vs-close",
+      "tested_on": "2026-10-09",
+      "seasons": [
+        2022,
+        2023,
+        2024,
+        2025
+      ],
+      "outcome": "no demonstrated edge; slope -0.0559, SE 0.5231, n = 2,322 games over 59 clusters, corrected interval [-1.8695, +1.7578]; registered NEGATIVE, pays at -1.500, detects 2.254; 2025 alone +0.4820 (n = 628)."
     }
   ]
 }
