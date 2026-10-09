@@ -1,0 +1,85 @@
+{
+  "measured_on": "2026-10-09",
+  "family": 95,
+  "critical_value": 3.4669929012192706,
+  "seasons": [
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "constants": {
+    "half_life_weeks": 6.0,
+    "offseason_weeks": 8.0,
+    "margin_cap": 28.0,
+    "ridge": 3.0,
+    "minimum_history": 300
+  },
+  "forecast": {
+    "games": 3126,
+    "mae_form": 13.65332396024871,
+    "mae_close": 12.004878438899553,
+    "corr_form_close": 0.8305624733253866
+  },
+  "starter_coverage": {
+    "team_games": 7728,
+    "matched": 7618
+  },
+  "flagged_team_games": 610,
+  "results": {
+    "form-ratings-vs-close": {
+      "label": "form ratings vs close",
+      "games": 3126,
+      "clusters": 65,
+      "slope": 0.0018086347310661583,
+      "standard_error": 0.0327906768049022,
+      "interval": [
+        -0.11187640897770516,
+        0.11549367843983747
+      ],
+      "detectable": 0.14128237357100384,
+      "regressor_sd": 8.588960250681035,
+      "regressor_nonzero": 3126,
+      "slope_2025": -0.011354839518354623,
+      "games_2025": 806,
+      "paying": 0.13643968138134993,
+      "direction": "positive"
+    },
+    "form-ratings-vs-open": {
+      "label": "form ratings vs open",
+      "games": 3117,
+      "clusters": 65,
+      "slope": 0.007101436373635097,
+      "standard_error": 0.03559701328539608,
+      "interval": [
+        -0.11631315599144117,
+        0.13051602873871135
+      ],
+      "detectable": 0.15337379459784273,
+      "regressor_sd": 8.382584993229369,
+      "regressor_nonzero": 3117,
+      "slope_2025": -0.014314777883584958,
+      "games_2025": 806,
+      "paying": 0.1397987614735223,
+      "direction": "positive"
+    },
+    "qb-change-vs-close": {
+      "label": "QB change vs close",
+      "games": 2322,
+      "clusters": 59,
+      "slope": -0.05586856193465018,
+      "standard_error": 0.5231140277775058,
+      "interval": [
+        -1.8695011827674832,
+        1.7577640588981829
+      ],
+      "detectable": 2.2538964941902333,
+      "regressor_sd": 0.47555636514560645,
+      "regressor_nonzero": 525,
+      "slope_2025": 0.48204007674269894,
+      "games_2025": 628,
+      "paying": -1.5,
+      "direction": "negative"
+    }
+  }
+}

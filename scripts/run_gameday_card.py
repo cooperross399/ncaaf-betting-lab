@@ -54,8 +54,10 @@ from ncaaf_betting_lab.providers.odds_api import (
     sufficient_quota,
 )
 from ncaaf_betting_lab.providers.team_names import load_membership
-from ncaaf_betting_lab.reports import gameday_card, provider_shadow
-from ncaaf_betting_lab.reports.card_pricing import Fixture, price_slate
+from ncaaf_betting_lab.data import starters as starter_data
+from ncaaf_betting_lab.models import form
+from ncaaf_betting_lab.reports import form_context, gameday_card, provider_shadow
+from ncaaf_betting_lab.reports.card_pricing import Fixture, consensus, price_slate
 from ncaaf_betting_lab.season import game_date
 from ncaaf_betting_lab.selection import selection_key
 from ncaaf_betting_lab.staging_provider_policy import StagingProviderPolicy
@@ -301,7 +303,9 @@ def _main(argv: list[str] | None, state: dict) -> int:
             "**This is a rehearsal.** The snapshot went to a rehearsal archive "
             "and nothing was settled."
         )
-    report = gameday_card.render(card)
+    report = gameday_card.render(card) + "\n" + form_section(
+        prices, matches, league=league, season=args.season, now=now
+    )
     if args.rehearsal:
         report = "> **REHEARSAL — not a card.**\n\n" + report
     OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -322,6 +326,62 @@ def _main(argv: list[str] | None, state: dict) -> int:
     )
     print(f"decision={decision}")
     return 0
+
+
+#: Seasons of results the form rating reads. Its half-life makes anything older
+#: weigh almost nothing, and step 5's history began in 2021 too.
+FORM_HISTORY_SEASONS = 5
+
+
+def form_section(prices, matches, *, league, season: int, now: datetime) -> str:
+    """The form rating and quarterback flags for this slate, as context.
+
+    A failure here never degrades the card — the probabilities do not read it —
+    but it is never silent either: the section says it failed and why.
+    """
+    try:
+        history: list = []
+        for year in range(season - FORM_HISTORY_SEASONS, season + 1):
+            try:
+                history.extend(load_schedule(league, RAW_DIR, season=year))
+            except (FileNotFoundError, OSError):
+                continue
+        frame = form.games_frame(history)
+        ratings = form.fit(frame, season=season, as_of=now)
+        try:
+            starters = starter_data.load_starters(league, RAW_DIR, season=season)
+        except (FileNotFoundError, OSError, KeyError, ValueError):
+            starters = None
+        season_games = [g for g in history if g.season == season]
+        quarterbacks = form_context.starter_states(season_games, starters, before=now)
+        through = None
+        if starters is not None and not starters.empty:
+            played = {
+                g.game_id: g.start_date[:10] for g in season_games if g.start_date
+            }
+            days = [played[i] for i in starters["game_id"].astype(str) if i in played]
+            through = max(days) if days else None
+        slate = {}
+        for (home, away), match in matches.items():
+            rows = prices[
+                (prices["home_team"].astype(str) == home)
+                & (prices["away_team"].astype(str) == away)
+            ]
+            line = consensus(rows, "spread", "home")
+            # The provider's home handicap; flipped when the feed's home team
+            # is the provider's away team.
+            market = None if line is None else (line if match.flipped else -line)
+            game = match.game
+            slate[f"{game.away_team} @ {game.home_team}"] = (game, market)
+        rows = form_context.build(slate, ratings, quarterbacks)
+        return form_context.render(rows, ratings, starters_through=through)
+    except Exception as exc:  # noqa: BLE001 - reported, never swallowed
+        print(f"::warning::form context failed: {exc}", file=sys.stderr)
+        return (
+            f"{form_context.HEADING}\n\n**Not available this run** — "
+            f"{type(exc).__name__}: {exc}. The prices and selections above do "
+            "not read it.\n"
+        )
 
 
 def settle_pending(games, ledger_path: Path, *, archive_dir: Path, as_of: date) -> int:

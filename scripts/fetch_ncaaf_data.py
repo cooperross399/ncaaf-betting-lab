@@ -14,7 +14,7 @@ import csv
 import sys
 
 from ncaaf_betting_lab.config import MANUAL_DIR, RAW_DIR
-from ncaaf_betting_lab.data import cfbfastr
+from ncaaf_betting_lab.data import cfbfastr, starters
 from ncaaf_betting_lab.leagues import DEFAULT_LEAGUE_KEY, league_for
 from ncaaf_betting_lab.providers.team_names import build_membership
 
@@ -40,6 +40,17 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--league", default=DEFAULT_LEAGUE_KEY)
     parser.add_argument("--seasons", type=int, nargs="+", required=True)
+    parser.add_argument(
+        "--player-stats-seasons",
+        type=int,
+        nargs="*",
+        default=None,
+        help=(
+            "Seasons of play-level player files to fetch, for the quarterback "
+            "flag. Defaults to the latest of --seasons, which is all the card "
+            "reads; the measurement in scripts/run_nightly_form.py needs 2021 on."
+        ),
+    )
     args = parser.parse_args(argv)
     league = league_for(args.league)
 
@@ -92,6 +103,25 @@ def main(argv: list[str] | None = None) -> int:
             f"other teams; {len(built.collisions)} colliding alias(es) dropped "
             "from both teams rather than guessed"
         )
+
+    # The card reads these as context only, so a failed fetch is reported and
+    # does not fail the run: the probabilities do not depend on it, and the
+    # card's form section says when its quarterback reads are missing.
+    wanted = (
+        args.player_stats_seasons
+        if args.player_stats_seasons is not None
+        else [max(args.seasons)]
+    )
+    for season in wanted:
+        try:
+            path = starters.fetch_player_stats(league, RAW_DIR, season=season)
+            print(f"{season}: player stats {path.stat().st_size / 1e6:.1f} MB")
+        except OSError as error:
+            print(
+                f"::warning::{season}: player stats fetch failed — {error}. "
+                "The card's quarterback reads will say so.",
+                file=sys.stderr,
+            )
     return 1 if failures else 0
 
 
