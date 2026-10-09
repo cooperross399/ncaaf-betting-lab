@@ -2,7 +2,7 @@
 
 **A search that runs every week is not twelve tests. It is twelve tests a week, forever.** Correcting today's findings across today's twelve is a lie if twelve more were tested last week. At a nominal 5% threshold roughly one look in twenty clears by chance, so an automated edge-hunter without a cumulative tally does not find edges — it manufactures them on a schedule, with clean intervals and good prose.
 
-**92 distinct hypotheses tested.** Any new 95% interval must be widened by **x1.76** before it means what it says.
+**95 distinct hypotheses tested.** Any new 95% interval must be widened by **x1.77** before it means what it says.
 
 | Search | Hypotheses |
 |:---|---:|
@@ -12,6 +12,7 @@
 | margin-shape | 4 |
 | opener-study | 4 |
 | ratings-residual | 3 |
+| nightly-form | 3 |
 
 | # | Search | Hypothesis | Seasons | Tested | Outcome |
 |---:|:---|:---|:---|:---|:---|
@@ -107,6 +108,9 @@
 | 90 | opener-study-unregistered | segment substitute / mean abs line move, books <= 2 vs >= 4 | 2021, 2022, 2023, 2024, 2025 | 2026-09-05 | not pre-registered: the registered SEGMENTS but a substituted STATISTIC (mean absolute move, not the H2 slope difference). Difference +0.2927 pts, SE 0.2604, n = 1,669; interval includes zero. Floor 1.1115 pts is most of the 1.44-pt mean move in the whole sample. |
 | 91 | opener-study-unregistered | resid_open on market_move, all games | 2021, 2022, 2023, 2024, 2025 | 2026-09-05 | not pre-registered, and substantially a re-run of the recorded line-movement-as-a-detector instrument. slope - 1 = -0.0570, SE 0.0994, n = 3,857 over 77 clusters; interval includes zero. The raw slope of ~1.0 is MECHANICAL — market_move is an additive term of resid_open — so a zero-exclusion there is arithmetic, not evidence. Recorded conservatively. |
 | 92 | opener-study-unregistered | resid_open on market_move, early-season arm | 2021, 2022, 2023, 2024, 2025 | 2026-09-05 | not pre-registered AND post-hoc selected: the arm was chosen after seeing which segment moved most, and the interval does not account for that selection. slope - 1 = -0.0964, SE 0.1374, n = 1,154 over 20 clusters; interval includes zero. Floor 0.5865 above the 0.5091 that would pay — an absence. |
+| 93 | nightly-form | form-ratings-vs-close | 2022, 2023, 2024, 2025 | 2026-10-09 | no demonstrated edge; slope +0.0018, SE 0.0328, n = 3,126 games over 65 clusters, corrected interval [-0.1119, +0.1155]; registered POSITIVE, pays at +0.136, detects 0.141; 2025 alone -0.0114 (n = 806). |
+| 94 | nightly-form | form-ratings-vs-open | 2022, 2023, 2024, 2025 | 2026-10-09 | no demonstrated edge; slope +0.0071, SE 0.0356, n = 3,117 games over 65 clusters, corrected interval [-0.1163, +0.1305]; registered POSITIVE, pays at +0.140, detects 0.153; 2025 alone -0.0143 (n = 806). |
+| 95 | nightly-form | qb-change-vs-close | 2022, 2023, 2024, 2025 | 2026-10-09 | no demonstrated edge; slope -0.0559, SE 0.5231, n = 2,322 games over 59 clusters, corrected interval [-1.8695, +1.7578]; registered NEGATIVE, pays at -1.500, detects 2.254; 2025 alone +0.4820 (n = 628). |
 
 The correction is Bonferroni on the cumulative count — conservative on purpose. Holm and Benjamini-Hochberg need every p-value in hand at once, and this lab's tests arrive one week at a time over a season. A correction that can be computed incrementally and is slightly too wide beats one that is exactly right and cannot be computed until the season is over.
 

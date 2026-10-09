@@ -35,10 +35,12 @@ far is short: **every measured result to date is a null.**
   new 95% interval by **x1.77** (`data/outputs/experiment_ledger.json`;
   checked 2026-10-09). It read 92 and x1.76 until the nightly-form study added
   three, and 78 and x1.742 before the opener study added 14. The ledger is the
-  record; this sentence is a copy of it. **`experiment_ledger.md` still renders
-  92**, on purpose: the allowlist receipt pins its checksum as evidence, so
-  re-rendering it fails the policy gate until Cooper decides whether the
-  receipt's evidence is refreshed. Read the JSON.
+  record; this sentence is a copy of it. **The allowlist receipt pins
+  `experiment_ledger.md` by checksum**, and Ledger Guard requires that page to
+  match the JSON, so recording any new hypothesis also means refreshing that
+  one `sha256` in the receipt. Cooper approved doing so on 2026-10-09 for this
+  study; it re-attests evidence and allowlists nothing. Each future refresh
+  still needs his word.
 * A **nightly form rating** and a **quarterback-change flag**, learned from
   each night's results and cfbfastR's free play-level file, were registered
   (`docs/preregistered_nightly_form.md`) and measured on 2022-2025 before

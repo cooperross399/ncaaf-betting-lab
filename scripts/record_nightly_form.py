@@ -11,11 +11,10 @@ file would be a second copy that nothing compares with the first.
 No unregistered look was taken: the study ran its three regressions and its
 registered 2025 sign check, and nothing else was put to the data.
 
-**`experiment_ledger.md` is deliberately not re-rendered.** The allowlist
-receipt for this lab cites it, by checksum, as evidence; the policy gate fails
-the build when cited evidence changes under a receipt, and refreshing a
-receipt's evidence is Cooper's decision, not a script's. The JSON is the
-record and the Ledger Guard checks it; the Markdown trails it until then.
+This writes the JSON only. `scripts/record_experiments.py` renders
+`experiment_ledger.md` from it, and the allowlist receipt pins that page's
+checksum, so re-rendering it also means refreshing the receipt's evidence —
+Cooper's decision, approved for this study on 2026-10-09.
 """
 
 from __future__ import annotations
