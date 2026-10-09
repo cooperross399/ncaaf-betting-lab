@@ -24,6 +24,7 @@ edge**. The card says so above the table, every time, in those words.
 4. **The edge and price bars** — `MIN_EDGE`, the juice bar, the longest price.
 5. **Kickoff** — a started game, or one whose start cannot be confirmed, is
    quarantined.
+6. **One side per game** — see `one_side_per_game`.
 
 Every exclusion is **counted and named**. An excluded market is never a pass,
 an avoid, or a no-value call.
@@ -78,6 +79,9 @@ class CardResult:
     frozen_rows: int = 0
     ledger_rows: int = 0
     notes: list[str] = field(default_factory=list)
+    #: Selections that cleared every bar and were dropped because the card
+    #: had already taken the other side of the same game.
+    opposite_side: list[dict] = field(default_factory=list)
 
     @property
     def decision(self) -> str:
@@ -89,7 +93,111 @@ class CardResult:
         return "no-selections"
 
 
+#: Markets that are one question about a game, grouped so a card cannot back
+#: both answers. A moneyline, a spread and every alternate-spread rung all ask
+#: who wins and by how much; a featured total and its ladder all ask how many.
+SIDE_FAMILIES: dict[str, str] = {
+    "moneyline": "margin",
+    "spread": "margin",
+    "alternate_spread": "margin",
+    "total_points": "total",
+    "alternate_total_points": "total",
+    "team_total": "team_total",
+    "alternate_team_total": "team_total",
+    "moneyline_h1": "margin_h1",
+    "spread_h1": "margin_h1",
+    "total_points_h1": "total_h1",
+}
+
+
+def _side(pick: Mapping) -> tuple[tuple, str] | None:
+    """`(group, side)` for a pick, or None for a market with no opposing side.
+
+    A team total is one question per team, so the group carries the team and
+    the side is over or under: `home_over` and `away_under` agree with each
+    other (both lean home), while `home_over` and `home_under` contradict.
+    """
+    family = SIDE_FAMILIES.get(str(pick.get("market", "")))
+    if family is None:
+        return None
+    selection = str(pick.get("selection", "")).lower()
+    if family == "team_total":
+        team, _, side = selection.rpartition("_")
+        return (pick.get("game"), family, team), side
+    return (pick.get("game"), family), selection
+
+
+def one_side_per_game(selections: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Keep one side of each game's question; return `(kept, dropped)`.
+
+    **Why this exists.** The card's centre is the market's consensus, so the
+    model has no opinion on who covers the featured line: that is a coin flip
+    by construction (`card_pricing`). Its opinions live in the alternate
+    ladder, where the measured shape and a book's ladder disagree about how
+    much mass sits in each tail. When a book's ladder is thinner than the
+    shape in BOTH tails, both blowouts clear the bar, and the card backed
+    Iowa by 10+ and Washington by 15+ on the same night (2026-10-09). Those
+    two can never both win, and a card that holds both is not an opinion.
+
+    **The rule.** For each game and question, the side whose single best
+    selection carries the larger edge is kept, and every selection on the
+    other side is dropped and counted. Ties go to the larger summed edge,
+    then to the side named first alphabetically, so the result never depends
+    on row order. This picks the side where the book's price is furthest
+    from the model; it is not a forecast of who wins, and the card says so.
+
+    The forward ledger is unaffected: it freezes every opinion, both sides,
+    whether or not the card selects it.
+    """
+    groups: dict[tuple, dict[str, list[dict]]] = {}
+    for pick in selections:
+        side = _side(pick)
+        if side is None:
+            continue
+        group, name = side
+        groups.setdefault(group, {}).setdefault(name, []).append(pick)
+
+    losers: set[int] = set()
+    for sides in groups.values():
+        if len(sides) < 2:
+            continue
+        ranked = sorted(
+            sides.items(),
+            key=lambda item: (
+                -max(p["edge"] for p in item[1]),
+                -sum(p["edge"] for p in item[1]),
+                item[0],
+            ),
+        )
+        for _, picks in ranked[1:]:
+            losers.update(id(p) for p in picks)
+
+    kept = [p for p in selections if id(p) not in losers]
+    dropped = [p for p in selections if id(p) in losers]
+    return kept, dropped
+
+
 def select(
+    prices: pd.DataFrame,
+    probabilities: Mapping[tuple, float],
+    league: League,
+    *,
+    policy: StagingProviderPolicy,
+    now: datetime,
+) -> tuple[list[dict], list[tuple[str, str]]]:
+    """Every wager that clears every bar, one side per game, and what was pulled.
+
+    The one-side rule runs here rather than in the caller, so no path reaches
+    a card with both answers to one question on it.
+    """
+    candidates, quarantined = _candidates(
+        prices, probabilities, league, policy=policy, now=now
+    )
+    kept, _ = one_side_per_game(candidates)
+    return kept, quarantined
+
+
+def _candidates(
     prices: pd.DataFrame,
     probabilities: Mapping[tuple, float],
     league: League,
@@ -215,10 +323,10 @@ def build_card(
         (str(item["label"]), verdict.reason) for item, verdict in quarantined
     ]
     if probabilities:
-        selections, pulled = select(
+        candidates, pulled = _candidates(
             prices, probabilities, league, policy=policy, now=now
         )
-        result.selections = selections
+        result.selections, result.opposite_side = one_side_per_game(candidates)
         result.quarantined.extend(pulled)
     return result
 
@@ -276,6 +384,17 @@ def render(result: CardResult) -> str:
                 "afternoon seen several ways. They are never staked as "
                 "independent, and their edges are never summed."
             )
+            if result.opposite_side:
+                games = sorted({p["game"] for p in result.opposite_side})
+                add("")
+                add(
+                    f"**One side per game.** {len(result.opposite_side)} "
+                    "selection(s) also cleared the bars on the other side of "
+                    f"{len(games)} game(s) ({', '.join(games)}) and were "
+                    "dropped. The side kept is the one whose best price sits "
+                    "furthest from the model, which is not a forecast of who "
+                    "wins: the model's centre is the market's own line."
+                )
         elif eligible:
             add(
                 "**None.** Markets are allowlisted, but nothing cleared every "
