@@ -517,3 +517,65 @@ def test_a_cap_above_the_agreed_one_is_refused_before_anything_runs(tmp_path, mo
 
 def test_the_registered_cap_is_the_agreed_one() -> None:
     assert LEAGUE.daily_credit_cap == 1_200
+
+
+def test_a_card_never_backs_both_sides_of_one_game() -> None:
+    # The 2026-10-09 card in miniature: both blowouts cleared the bar.
+    prices = staged([
+        dict(home_team="A", away_team="B", market="alternate_spread", selection="away",
+             line=-9.5, american_odds=500, book="dk"),
+        dict(home_team="A", away_team="B", market="alternate_spread", selection="away",
+             line=-6.5, american_odds=305, book="dk"),
+        dict(home_team="A", away_team="B", market="alternate_spread", selection="home",
+             line=-14.5, american_odds=556, book="dk"),
+        dict(home_team="A", away_team="B", market="total_points", selection="over",
+             line=50.5, american_odds=100, book="dk"),
+        dict(home_team="C", away_team="D", market="alternate_spread", selection="home",
+             line=-14.5, american_odds=556, book="dk"),
+    ])
+    probability = {
+        ("away", -9.5): 0.234, ("away", -6.5): 0.302, ("home", -14.5): 0.205,
+        ("over", 50.5): 0.60,
+    }
+    probabilities = {
+        selection_key(row, market=row.market, selection=row.selection,
+                      line=float(row.line), league=LEAGUE): probability[(row.selection, row.line)]
+        for row in prices.itertuples()
+    }
+    policy = Policy({"alternate_spread", "total_points"})
+    selections, _ = gameday_card.select(prices, probabilities, LEAGUE, policy=policy, now=NOW)
+    sides = {(s["game"], s["market"], s["selection"]) for s in selections}
+    # B's blowout carries the larger single edge, so B is the side kept; the
+    # total is a different question and stands; game C has one side only.
+    assert sides == {
+        ("B @ A", "alternate_spread", "away"),
+        ("B @ A", "total_points", "over"),
+        ("D @ C", "alternate_spread", "home"),
+    }
+    card = gameday_card.build_card(
+        prices, LEAGUE, policy=policy,
+        diagnostics=card_pricing.PricingDiagnostics(priced=5, opinions=5),
+        now=NOW, slate_date="2026-10-03", refused=[], probabilities=probabilities,
+    )
+    assert [p["game"] for p in card.opposite_side] == ["B @ A"]
+    assert "One side per game" in gameday_card.render(card)
+
+
+def test_one_side_per_game_ignores_row_order_and_reads_team_totals_per_team() -> None:
+    picks = [
+        dict(game="B @ A", market="team_total", selection="home_over", edge=0.05),
+        dict(game="B @ A", market="team_total", selection="away_under", edge=0.04),
+        dict(game="B @ A", market="alternate_team_total", selection="home_under", edge=0.06),
+        dict(game="B @ A", market="spread", selection="home", edge=0.04),
+        dict(game="B @ A", market="moneyline", selection="away", edge=0.04),
+        dict(game="B @ A", market="alternate_spread", selection="away", edge=0.01),
+    ]
+    kept, dropped = gameday_card.one_side_per_game(picks)
+    kept_reversed, _ = gameday_card.one_side_per_game(list(reversed(picks)))
+    assert sorted(map(id, kept)) == sorted(map(id, kept_reversed))
+    # home over and away under agree; home under contradicts home over and wins on edge.
+    assert {(p["market"], p["selection"]) for p in kept} == {
+        ("team_total", "away_under"), ("alternate_team_total", "home_under"),
+        ("moneyline", "away"), ("alternate_spread", "away"),
+    }
+    assert len(kept) + len(dropped) == len(picks)
