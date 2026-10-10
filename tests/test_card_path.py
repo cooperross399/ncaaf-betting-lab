@@ -534,12 +534,14 @@ def test_a_card_never_backs_both_sides_of_one_game() -> None:
              line=-14.5, american_odds=556, book="dk"),
     ])
     probability = {
-        ("away", -9.5): 0.234, ("away", -6.5): 0.302, ("home", -14.5): 0.205,
-        ("over", 50.5): 0.60,
+        ("B @ A", "away", -9.5): 0.234, ("B @ A", "away", -6.5): 0.302,
+        ("B @ A", "home", -14.5): 0.205, ("B @ A", "over", 50.5): 0.60,
+        ("D @ C", "home", -14.5): 0.25,
     }
     probabilities = {
         selection_key(row, market=row.market, selection=row.selection,
-                      line=float(row.line), league=LEAGUE): probability[(row.selection, row.line)]
+                      line=float(row.line), league=LEAGUE):
+            probability[(f"{row.away_team} @ {row.home_team}", row.selection, row.line)]
         for row in prices.itertuples()
     }
     policy = Policy({"alternate_spread", "total_points"})
@@ -547,18 +549,23 @@ def test_a_card_never_backs_both_sides_of_one_game() -> None:
     sides = {(s["game"], s["market"], s["selection"]) for s in selections}
     # B's blowout carries the larger single edge, so B is the side kept; the
     # total is a different question and stands; game C has one side only.
+    # B -6.5 (edge +5.5%) is on the kept side but under the 6% floor.
     assert sides == {
         ("B @ A", "alternate_spread", "away"),
         ("B @ A", "total_points", "over"),
         ("D @ C", "alternate_spread", "home"),
     }
+    assert [s["line"] for s in selections if s["game"] == "B @ A"
+            and s["market"] == "alternate_spread"] == [-9.5]
     card = gameday_card.build_card(
         prices, LEAGUE, policy=policy,
         diagnostics=card_pricing.PricingDiagnostics(priced=5, opinions=5),
         now=NOW, slate_date="2026-10-03", refused=[], probabilities=probabilities,
     )
     assert [p["game"] for p in card.opposite_side] == ["B @ A"]
-    assert "One side per game" in gameday_card.render(card)
+    assert [p["line"] for p in card.below_floor] == [-6.5]
+    text = gameday_card.render(card)
+    assert "One side per game" in text and "Edge floor" in text
 
 
 def test_one_side_per_game_ignores_row_order_and_reads_team_totals_per_team() -> None:
@@ -579,3 +586,11 @@ def test_one_side_per_game_ignores_row_order_and_reads_team_totals_per_team() ->
         ("moneyline", "away"), ("alternate_spread", "away"),
     }
     assert len(kept) + len(dropped) == len(picks)
+
+
+def test_the_edge_floor_is_strictly_above_six_percent() -> None:
+    picks = [dict(game="B @ A", market="spread", selection="home", edge=e)
+             for e in (0.0599, 0.06, 0.0601)]
+    selected, below = gameday_card.above_floor(picks)
+    assert [p["edge"] for p in selected] == [0.0601]
+    assert [p["edge"] for p in below] == [0.0599, 0.06]
