@@ -25,6 +25,8 @@ edge**. The card says so above the table, every time, in those words.
 5. **Kickoff** — a started game, or one whose start cannot be confirmed, is
    quarantined.
 6. **One side per game** — see `one_side_per_game`.
+7. **The card's edge floor** — only an edge strictly above `CARD_EDGE_FLOOR`
+   is selected, applied to the side the game kept.
 
 Every exclusion is **counted and named**. An excluded market is never a pass,
 an avoid, or a no-value call.
@@ -38,7 +40,12 @@ from datetime import datetime
 
 import pandas as pd
 
-from ncaaf_betting_lab.config import MAX_DEFAULT_JUICE, MAX_DEFAULT_PRICE, MIN_EDGE
+from ncaaf_betting_lab.config import (
+    CARD_EDGE_FLOOR,
+    MAX_DEFAULT_JUICE,
+    MAX_DEFAULT_PRICE,
+    MIN_EDGE,
+)
 from ncaaf_betting_lab.forward_evidence import american_to_implied
 from ncaaf_betting_lab.kickoff import QUARANTINE_HEADING, judge, partition
 from ncaaf_betting_lab.leagues import League
@@ -82,6 +89,8 @@ class CardResult:
     #: Selections that cleared every bar and were dropped because the card
     #: had already taken the other side of the same game.
     opposite_side: list[dict] = field(default_factory=list)
+    #: Selections on the kept side whose edge did not clear `CARD_EDGE_FLOOR`.
+    below_floor: list[dict] = field(default_factory=list)
 
     @property
     def decision(self) -> str:
@@ -194,7 +203,15 @@ def select(
         prices, probabilities, league, policy=policy, now=now
     )
     kept, _ = one_side_per_game(candidates)
-    return kept, quarantined
+    selected, _ = above_floor(kept)
+    return selected, quarantined
+
+
+def above_floor(selections: list[dict]) -> tuple[list[dict], list[dict]]:
+    """`(selected, below)`: only an edge strictly above `CARD_EDGE_FLOOR` selects."""
+    selected = [p for p in selections if p["edge"] > CARD_EDGE_FLOOR]
+    below = [p for p in selections if not p["edge"] > CARD_EDGE_FLOOR]
+    return selected, below
 
 
 def _candidates(
@@ -326,7 +343,8 @@ def build_card(
         candidates, pulled = _candidates(
             prices, probabilities, league, policy=policy, now=now
         )
-        result.selections, result.opposite_side = one_side_per_game(candidates)
+        kept, result.opposite_side = one_side_per_game(candidates)
+        result.selections, result.below_floor = above_floor(kept)
         result.quarantined.extend(pulled)
     return result
 
@@ -384,17 +402,7 @@ def render(result: CardResult) -> str:
                 "afternoon seen several ways. They are never staked as "
                 "independent, and their edges are never summed."
             )
-            if result.opposite_side:
-                games = sorted({p["game"] for p in result.opposite_side})
-                add("")
-                add(
-                    f"**One side per game.** {len(result.opposite_side)} "
-                    "selection(s) also cleared the bars on the other side of "
-                    f"{len(games)} game(s) ({', '.join(games)}) and were "
-                    "dropped. The side kept is the one whose best price sits "
-                    "furthest from the model, which is not a forecast of who "
-                    "wins: the model's centre is the market's own line."
-                )
+
         elif eligible:
             add(
                 "**None.** Markets are allowlisted, but nothing cleared every "
@@ -406,6 +414,26 @@ def render(result: CardResult) -> str:
                 "**None.** Not a pass, not an avoid, and not a no-value call — "
                 "no market is allowlisted, so the card may not select."
             )
+
+    if result.games and result.opposite_side:
+        games = sorted({p["game"] for p in result.opposite_side})
+        add("")
+        add(
+            f"**One side per game.** {len(result.opposite_side)} "
+            "selection(s) also cleared the bars on the other side of "
+            f"{len(games)} game(s) ({', '.join(games)}) and were "
+            "dropped. The side kept is the one whose best price sits "
+            "furthest from the model, which is not a forecast of who "
+            "wins: the model's centre is the market's own line."
+        )
+    if result.games and result.below_floor:
+        add("")
+        add(
+            f"**Edge floor.** {len(result.below_floor)} selection(s) on the "
+            f"kept side cleared {MIN_EDGE:.1%} but not "
+            f"{CARD_EDGE_FLOOR:.0%}, and were not selected: the card selects "
+            f"only edges strictly above {CARD_EDGE_FLOOR:.0%}."
+        )
 
     excluded = {m: s for m, s in result.market_states.items() if s != "eligible"}
     if excluded:

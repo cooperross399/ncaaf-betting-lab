@@ -44,3 +44,10 @@ MIN_EDGE = 0.035
 MIN_PROP_EDGE = 0.06
 
 BANKROLL_UNIT_DOLLARS = 25.0
+
+#: The card's selection bar, applied after the one-side-per-game choice.
+#: Cooper, 2026-10-10: "Let's only bet edges greater than 6%". Strictly
+#: greater: an edge of exactly 0.06 is not selected. `MIN_EDGE` still decides
+#: which candidates enter the one-side choice, so the side a game keeps does
+#: not depend on this bar; this bar only removes picks from the kept side.
+CARD_EDGE_FLOOR = 0.06
