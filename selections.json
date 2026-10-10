@@ -1,74 +1,479 @@
 [
   {
-    "game": "Iowa Hawkeyes @ Washington Huskies",
+    "game": "Texas Longhorns @ Oklahoma Sooners",
     "market": "alternate_spread",
     "selection": "away",
-    "line": -9.5,
-    "odds": 500,
+    "line": -21.5,
+    "odds": 493,
     "book": "draftkings",
-    "edge": 0.06712322203162696
+    "edge": 0.06602780802029115
   },
   {
-    "game": "Iowa Hawkeyes @ Washington Huskies",
+    "game": "Texas Longhorns @ Oklahoma Sooners",
     "market": "alternate_spread",
     "selection": "away",
-    "line": -8.5,
-    "odds": 457,
+    "line": -17.5,
+    "odds": 301,
     "book": "draftkings",
-    "edge": 0.06312503046120552
+    "edge": 0.06584939905097886
   },
   {
-    "game": "Iowa Hawkeyes @ Washington Huskies",
-    "market": "alternate_spread",
-    "selection": "away",
-    "line": -7.5,
-    "odds": 411,
-    "book": "draftkings",
-    "edge": 0.058669443577466396
-  },
-  {
-    "game": "Iowa Hawkeyes @ Washington Huskies",
-    "market": "alternate_spread",
-    "selection": "away",
-    "line": -6.5,
-    "odds": 305,
-    "book": "draftkings",
-    "edge": 0.05477886638413931
-  },
-  {
-    "game": "Iowa Hawkeyes @ Washington Huskies",
+    "game": "Central Michigan Chippewas @ Ohio Bobcats",
     "market": "alternate_spread",
     "selection": "home",
     "line": -14.5,
-    "odds": 556,
+    "odds": 600,
     "book": "draftkings",
-    "edge": 0.052551098110002165
+    "edge": 0.062132979643103214
   },
   {
-    "game": "Iowa Hawkeyes @ Washington Huskies",
+    "game": "James Madison Dukes @ Georgia Southern Eagles",
     "market": "alternate_spread",
     "selection": "away",
-    "line": -5.5,
-    "odds": 261,
+    "line": -21.5,
+    "odds": 479,
     "book": "draftkings",
-    "edge": 0.05096912539675019
+    "edge": 0.061950300425933275
   },
   {
-    "game": "Iowa Hawkeyes @ Washington Huskies",
+    "game": "Texas Longhorns @ Oklahoma Sooners",
     "market": "alternate_spread",
     "selection": "away",
-    "line": -4.5,
-    "odds": 235,
+    "line": -16.5,
+    "odds": 249,
     "book": "draftkings",
-    "edge": 0.04353297710128934
+    "edge": 0.05984987946338932
   },
   {
-    "game": "Iowa Hawkeyes @ Washington Huskies",
+    "game": "Texas Longhorns @ Oklahoma Sooners",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -22.5,
+    "odds": 527,
+    "book": "draftkings",
+    "edge": 0.05951411137359611
+  },
+  {
+    "game": "James Madison Dukes @ Georgia Southern Eagles",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -17.5,
+    "odds": 291,
+    "book": "draftkings",
+    "edge": 0.05947148195114532
+  },
+  {
+    "game": "Texas Longhorns @ Oklahoma Sooners",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -20.5,
+    "odds": 416,
+    "book": "draftkings",
+    "edge": 0.058134453378239914
+  },
+  {
+    "game": "James Madison Dukes @ Georgia Southern Eagles",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -22.5,
+    "odds": 521,
+    "book": "draftkings",
+    "edge": 0.057973148734235314
+  },
+  {
+    "game": "James Madison Dukes @ Georgia Southern Eagles",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -16.5,
+    "odds": 246,
+    "book": "draftkings",
+    "edge": 0.057365489712325135
+  },
+  {
+    "game": "Texas Longhorns @ Oklahoma Sooners",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -23.5,
+    "odds": 582,
+    "book": "draftkings",
+    "edge": 0.056161551363190204
+  },
+  {
+    "game": "Central Michigan Chippewas @ Ohio Bobcats",
     "market": "alternate_spread",
     "selection": "home",
     "line": -13.5,
-    "odds": 450,
+    "odds": 492,
     "book": "draftkings",
-    "edge": 0.04276220069917133
+    "edge": 0.05566146359843424
+  },
+  {
+    "game": "James Madison Dukes @ Georgia Southern Eagles",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -17.0,
+    "odds": 270,
+    "book": "betrivers",
+    "edge": 0.05509298916941713
+  },
+  {
+    "game": "Texas Longhorns @ Oklahoma Sooners",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -18.5,
+    "odds": 337,
+    "book": "draftkings",
+    "edge": 0.054765471770556656
+  },
+  {
+    "game": "James Madison Dukes @ Georgia Southern Eagles",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -23.5,
+    "odds": 573,
+    "book": "draftkings",
+    "edge": 0.05420070724158302
+  },
+  {
+    "game": "Texas Longhorns @ Oklahoma Sooners",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -19.5,
+    "odds": 368,
+    "book": "draftkings",
+    "edge": 0.0539508905540729
+  },
+  {
+    "game": "James Madison Dukes @ Georgia Southern Eagles",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -16.0,
+    "odds": 235,
+    "book": "betrivers",
+    "edge": 0.05141027764101058
+  },
+  {
+    "game": "James Madison Dukes @ Georgia Southern Eagles",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -20.5,
+    "odds": 397,
+    "book": "draftkings",
+    "edge": 0.050725659529878425
+  },
+  {
+    "game": "James Madison Dukes @ Georgia Southern Eagles",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -19.5,
+    "odds": 358,
+    "book": "draftkings",
+    "edge": 0.049285492875574766
+  },
+  {
+    "game": "James Madison Dukes @ Georgia Southern Eagles",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -18.5,
+    "odds": 326,
+    "book": "draftkings",
+    "edge": 0.04885663967807807
+  },
+  {
+    "game": "Texas Longhorns @ Oklahoma Sooners",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -15.5,
+    "odds": 225,
+    "book": "draftkings",
+    "edge": 0.04879263897915531
+  },
+  {
+    "game": "James Madison Dukes @ Georgia Southern Eagles",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -15.5,
+    "odds": 225,
+    "book": "draftkings",
+    "edge": 0.04879263897915531
+  },
+  {
+    "game": "James Madison Dukes @ Georgia Southern Eagles",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -15.0,
+    "odds": 220,
+    "book": "betrivers",
+    "edge": 0.047043490802891774
+  },
+  {
+    "game": "Nevada Wolf Pack @ UTEP Miners",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -17.0,
+    "odds": 205,
+    "book": "betrivers",
+    "edge": 0.04684334367860632
+  },
+  {
+    "game": "Nevada Wolf Pack @ UTEP Miners",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -17.5,
+    "odds": 215,
+    "book": "betrivers",
+    "edge": 0.044971497858336484
+  },
+  {
+    "game": "Central Michigan Chippewas @ Ohio Bobcats",
+    "market": "alternate_spread",
+    "selection": "home",
+    "line": -12.5,
+    "odds": 446,
+    "book": "draftkings",
+    "edge": 0.04473027651179512
+  },
+  {
+    "game": "Nevada Wolf Pack @ UTEP Miners",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -16.5,
+    "odds": 185,
+    "book": "betrivers",
+    "edge": 0.04432745691577605
+  },
+  {
+    "game": "Indiana Hoosiers @ Nebraska Cornhuskers",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -21.5,
+    "odds": 397,
+    "book": "draftkings",
+    "edge": 0.04326584432730113
+  },
+  {
+    "game": "LSU Tigers @ Kentucky Wildcats",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -21.5,
+    "odds": 373,
+    "book": "draftkings",
+    "edge": 0.04298817909341951
+  },
+  {
+    "game": "North Dakota State Bison @ UNLV Rebels",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -10.0,
+    "odds": 290,
+    "book": "betrivers",
+    "edge": 0.042288259511647
+  },
+  {
+    "game": "Nevada Wolf Pack @ UTEP Miners",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -16.0,
+    "odds": 180,
+    "book": "betrivers",
+    "edge": 0.04227205683477381
+  },
+  {
+    "game": "North Dakota State Bison @ UNLV Rebels",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -10.5,
+    "odds": 300,
+    "book": "betrivers",
+    "edge": 0.0418328253932676
+  },
+  {
+    "game": "North Dakota State Bison @ UNLV Rebels",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -11.0,
+    "odds": 325,
+    "book": "betrivers",
+    "edge": 0.04179759010350753
+  },
+  {
+    "game": "Texas Longhorns @ Oklahoma Sooners",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -14.5,
+    "odds": 208,
+    "book": "draftkings",
+    "edge": 0.04031636515702486
+  },
+  {
+    "game": "Virginia Tech Hokies @ California Golden Bears",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -17.5,
+    "odds": 210,
+    "book": "betrivers",
+    "edge": 0.03985117015736361
+  },
+  {
+    "game": "Indiana Hoosiers @ Nebraska Cornhuskers",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -22.5,
+    "odds": 428,
+    "book": "draftkings",
+    "edge": 0.03904627570392849
+  },
+  {
+    "game": "North Dakota State Bison @ UNLV Rebels",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -11.5,
+    "odds": 330,
+    "book": "betrivers",
+    "edge": 0.03888327826111851
+  },
+  {
+    "game": "LSU Tigers @ Kentucky Wildcats",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -22.5,
+    "odds": 402,
+    "book": "draftkings",
+    "edge": 0.038804091830609955
+  },
+  {
+    "game": "North Dakota State Bison @ UNLV Rebels",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -13.5,
+    "odds": 392,
+    "book": "draftkings",
+    "edge": 0.0384393543174433
+  },
+  {
+    "game": "James Madison Dukes @ Georgia Southern Eagles",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -14.5,
+    "odds": 206,
+    "book": "draftkings",
+    "edge": 0.03819430421143449
+  },
+  {
+    "game": "North Dakota State Bison @ UNLV Rebels",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -12.0,
+    "odds": 350,
+    "book": "betrivers",
+    "edge": 0.038065273558934465
+  },
+  {
+    "game": "Nevada Wolf Pack @ UTEP Miners",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -21.5,
+    "odds": 320,
+    "book": "fanduel",
+    "edge": 0.038058299272705876
+  },
+  {
+    "game": "North Dakota State Bison @ UNLV Rebels",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -14.5,
+    "odds": 474,
+    "book": "draftkings",
+    "edge": 0.03756272858219745
+  },
+  {
+    "game": "Indiana Hoosiers @ Nebraska Cornhuskers",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -17.5,
+    "odds": 246,
+    "book": "draftkings",
+    "edge": 0.037500431168985826
+  },
+  {
+    "game": "Nevada Wolf Pack @ UTEP Miners",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -18.0,
+    "odds": 230,
+    "book": "betrivers",
+    "edge": 0.03727800835828682
+  },
+  {
+    "game": "Central Michigan Chippewas @ Ohio Bobcats",
+    "market": "alternate_spread",
+    "selection": "home",
+    "line": -11.5,
+    "odds": 413,
+    "book": "draftkings",
+    "edge": 0.037082431173316444
+  },
+  {
+    "game": "North Dakota State Bison @ UNLV Rebels",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -13.0,
+    "odds": 380,
+    "book": "betrivers",
+    "edge": 0.03695677960602098
+  },
+  {
+    "game": "North Dakota State Bison @ UNLV Rebels",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -12.5,
+    "odds": 355,
+    "book": "draftkings",
+    "edge": 0.03658247222538308
+  },
+  {
+    "game": "North Dakota State Bison @ UNLV Rebels",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -16.5,
+    "odds": 554,
+    "book": "draftkings",
+    "edge": 0.03639975637030002
+  },
+  {
+    "game": "LSU Tigers @ Kentucky Wildcats",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -24.5,
+    "odds": 521,
+    "book": "draftkings",
+    "edge": 0.03634397763948219
+  },
+  {
+    "game": "Nevada Wolf Pack @ UTEP Miners",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -15.5,
+    "odds": 170,
+    "book": "betrivers",
+    "edge": 0.03537535832101518
+  },
+  {
+    "game": "Indiana Hoosiers @ Nebraska Cornhuskers",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -24.5,
+    "odds": 551,
+    "book": "draftkings",
+    "edge": 0.03522286903868124
+  },
+  {
+    "game": "LSU Tigers @ Kentucky Wildcats",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -23.5,
+    "odds": 438,
+    "book": "draftkings",
+    "edge": 0.035086979258940054
   }
 ]
