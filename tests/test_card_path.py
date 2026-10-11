@@ -594,3 +594,51 @@ def test_the_edge_floor_is_strictly_above_six_percent() -> None:
     selected, below = gameday_card.above_floor(picks)
     assert [p["edge"] for p in selected] == [0.0601]
     assert [p["edge"] for p in below] == [0.0599, 0.06]
+
+
+def test_each_question_keeps_only_its_best_rung() -> None:
+    """Cooper, 2026-10-11: fewer picks. One answer per game question: the
+    margin ladder, the total and each team's total keep their largest edge,
+    and a tie goes to the better price whatever the row order."""
+    from ncaaf_betting_lab.reports.gameday_card import best_rung_per_question
+
+    picks = [
+        dict(game="B @ A", market="alternate_spread", selection="home", line=-14.5, odds=200, edge=0.07),
+        dict(game="B @ A", market="alternate_spread", selection="home", line=-21.5, odds=450, edge=0.09),
+        dict(game="B @ A", market="moneyline", selection="home", line=None, odds=-400, edge=0.065),
+        dict(game="B @ A", market="alternate_total_points", selection="over", line=54.5, odds=110, edge=0.08),
+        dict(game="B @ A", market="alternate_total_points", selection="over", line=58.5, odds=180, edge=0.08),
+        dict(game="D @ C", market="alternate_spread", selection="away", line=10.5, odds=-120, edge=0.07),
+    ]
+    for order in (picks, list(reversed(picks))):
+        kept, dropped = best_rung_per_question(order)
+        assert sorted((p["game"], p["market"], p["line"]) for p in kept) == [
+            ("B @ A", "alternate_spread", -21.5),
+            ("B @ A", "alternate_total_points", 58.5),
+            ("D @ C", "alternate_spread", 10.5),
+        ]
+        assert len(dropped) == 3
+
+
+def test_no_game_carries_more_than_three_picks() -> None:
+    """Cooper, 2026-10-11: "no more than 3 picks per game". The largest
+    edges stay, whatever the row order; another game is untouched."""
+    from ncaaf_betting_lab.reports.gameday_card import cap_per_game
+
+    picks = [
+        dict(game="B @ A", market="alternate_spread", selection="home", line=-7.5, odds=250, edge=0.09),
+        dict(game="B @ A", market="total_points", selection="over", line=44.5, odds=-110, edge=0.07),
+        dict(game="B @ A", market="team_total", selection="home_over", line=24.5, odds=-105, edge=0.08),
+        dict(game="B @ A", market="team_total", selection="away_under", line=17.5, odds=140, edge=0.065),
+        dict(game="B @ A", market="moneyline", selection="home", line=None, odds=-200, edge=0.07),
+        dict(game="D @ C", market="alternate_spread", selection="away", line=6.5, odds=-120, edge=0.062),
+    ]
+    for order in (picks, list(reversed(picks))):
+        kept, dropped = cap_per_game(order)
+        assert sorted((p["game"], p["market"]) for p in kept) == [
+            ("B @ A", "alternate_spread"),
+            ("B @ A", "team_total"),
+            ("B @ A", "total_points"),
+            ("D @ C", "alternate_spread"),
+        ]
+        assert len(dropped) == 2
