@@ -42,6 +42,7 @@ import pandas as pd
 
 from ncaaf_betting_lab.config import (
     CARD_EDGE_FLOOR,
+    CARD_PICKS_PER_GAME,
     MAX_DEFAULT_JUICE,
     MAX_DEFAULT_PRICE,
     MIN_EDGE,
@@ -94,6 +95,8 @@ class CardResult:
     #: Selections that cleared every bar but were not their question's best
     #: rung: the card carries one answer per question.
     other_rungs: list[dict] = field(default_factory=list)
+    #: Selections beyond a game's `CARD_PICKS_PER_GAME` largest edges.
+    over_game_cap: list[dict] = field(default_factory=list)
 
     @property
     def decision(self) -> str:
@@ -207,7 +210,8 @@ def select(
     )
     kept, _ = one_side_per_game(candidates)
     floored, _ = above_floor(kept)
-    selected, _ = best_rung_per_question(floored)
+    rungs, _ = best_rung_per_question(floored)
+    selected, _ = cap_per_game(rungs)
     return selected, quarantined
 
 
@@ -239,6 +243,32 @@ def best_rung_per_question(selections: list[dict]) -> tuple[list[dict], list[dic
     winners = {id(p) for p in best.values()}
     kept = [p for p in selections if _side(p) is None or id(p) in winners]
     dropped = [p for p in selections if _side(p) is not None and id(p) not in winners]
+    return kept, dropped
+
+
+def cap_per_game(selections: list[dict]) -> tuple[list[dict], list[dict]]:
+    """`(kept, dropped)`: at most `CARD_PICKS_PER_GAME` selections per game.
+
+    Cooper, 2026-10-11: "no more than 3 picks per game". The largest edges
+    stay; ties go to the better price, then market, selection and line, so
+    row order never decides. Runs after one pick per question.
+    """
+    def rank(pick: Mapping) -> tuple:
+        return (
+            -pick["edge"], -pick.get("odds", 0), str(pick.get("market")),
+            str(pick.get("selection")), str(pick.get("line")),
+        )
+
+    by_game: dict[object, list[dict]] = {}
+    for pick in selections:
+        by_game.setdefault(pick.get("game"), []).append(pick)
+    winners = {
+        id(p)
+        for picks in by_game.values()
+        for p in sorted(picks, key=rank)[:CARD_PICKS_PER_GAME]
+    }
+    kept = [p for p in selections if id(p) in winners]
+    dropped = [p for p in selections if id(p) not in winners]
     return kept, dropped
 
 
@@ -380,7 +410,8 @@ def build_card(
         )
         kept, result.opposite_side = one_side_per_game(candidates)
         floored, result.below_floor = above_floor(kept)
-        result.selections, result.other_rungs = best_rung_per_question(floored)
+        rungs, result.other_rungs = best_rung_per_question(floored)
+        result.selections, result.over_game_cap = cap_per_game(rungs)
         result.quarantined.extend(pulled)
     return result
 
@@ -477,6 +508,13 @@ def render(result: CardResult) -> str:
             "selection(s) cleared every bar but were other rungs of a question "
             "the card already answers, and were not selected: each game's "
             "margin, total and team totals carry only their largest edge."
+        )
+    if result.games and result.over_game_cap:
+        add("")
+        add(
+            f"**Picks per game.** {len(result.over_game_cap)} selection(s) "
+            f"were dropped to keep each game to its {CARD_PICKS_PER_GAME} "
+            "largest edges."
         )
 
     excluded = {m: s for m, s in result.market_states.items() if s != "eligible"}

@@ -51,3 +51,8 @@ BANKROLL_UNIT_DOLLARS = 25.0
 #: which candidates enter the one-side choice, so the side a game keeps does
 #: not depend on this bar; this bar only removes picks from the kept side.
 CARD_EDGE_FLOOR = 0.06
+
+
+#: Cooper, 2026-10-11: "no more than 3 picks per game". After one pick per
+#: question, a game keeps at most this many selections, the largest edges.
+CARD_PICKS_PER_GAME = 3
