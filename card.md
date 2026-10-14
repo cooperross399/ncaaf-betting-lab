@@ -1,4 +1,4 @@
-# NCAAF card — 2026-10-13
+# NCAAF card — 2026-10-14
 
 **10 market(s) are allowlisted**: `alternate_spread`, `alternate_team_total`, `alternate_total_points`, `moneyline`, `moneyline_h1`, `spread`, `spread_h1`, `team_total`, `total_points`, `total_points_h1`. The approval records an owner's decision, not a measurement.
 
@@ -6,34 +6,36 @@ Shapes fitted on 3,864 finished FBS-vs-FBS games, 2021-2025: 9 of 10 spread buck
 
 ## Slate (2 game(s) staged)
 
-Delaware Blue Hens @ Middle Tennessee Blue Raiders, Florida International Panthers @ Jacksonville State Gamecocks
+Kennesaw State Owls @ Missouri State Bears, Western Kentucky Hilltoppers @ Sam Houston State Bearkats
 
 ## Selections
 
 **None.** Markets are allowlisted, but nothing cleared every bar today. That is a genuine judgement about markets that were priced and modelled.
 
+**Edge floor.** 14 selection(s) on the kept side cleared 3.5% but not 6%, and were not selected: the card selects only edges strictly above 6%.
+
 ## The accounting identity
 
-`priced 1,966 = no_opinion 636 + unrated_opponent 0 + kickoff_tbd 0 + unresolved 0 + unparseable 0 + opinions 1,330 — reconciles.`
+`priced 1,992 = no_opinion 640 + unrated_opponent 0 + kickoff_tbd 0 + unresolved 0 + unparseable 0 + opinions 1,352 — reconciles.`
 
 - 520 x `alternate_team_total`: a team total needs the joint distribution of margin and total, which this lab has not measured
-- 32 x `team_total`: a team total needs the joint distribution of margin and total, which this lab has not measured
-- 30 x `spread_h1`: first-half markets have no model, and no in-season half-time score source exists to settle them (`docs/build_order.md`, 1.2)
+- 32 x `moneyline_h1`: first-half markets have no model, and no in-season half-time score source exists to settle them (`docs/build_order.md`, 1.2)
+- 32 x `spread_h1`: first-half markets have no model, and no in-season half-time score source exists to settle them (`docs/build_order.md`, 1.2)
+- 28 x `team_total`: a team total needs the joint distribution of margin and total, which this lab has not measured
 - 28 x `total_points_h1`: first-half markets have no model, and no in-season half-time score source exists to settle them (`docs/build_order.md`, 1.2)
-- 26 x `moneyline_h1`: first-half markets have no model, and no in-season half-time score source exists to settle them (`docs/build_order.md`, 1.2)
 
 ## Forward evidence
 
-1,330 opinion(s) frozen for 2026-10-13; 108,500 row(s) in the settled ledger. Frozen before kickoff, settled after, never repriced.
+1,352 opinion(s) frozen for 2026-10-14; 108,500 row(s) in the settled ledger. Frozen before kickoff, settled after, never repriced.
 
 ## Form and quarterbacks — context, not an opinion
 
 Refitted this run from every finished FBS-vs-FBS game, recent games weighing most. **These numbers do not move any probability above**: measured on 2022-2025 they added nothing to the closing or opening line (`data/outputs/nightly_form.md`), so they are a description of how teams are playing, not an edge.
 
-Form rating fitted on 4,193 games through 2026-10-13 12:43 UTC; home field +4.4 points.
+Form rating fitted on 4,193 games through 2026-10-14 12:42 UTC; home field +4.4 points.
 Quarterback reads come from cfbfastR's play-level file, which runs through 2026-10-11. **No free source names the coming game's starter**, and no league-wide college injury feed exists; a change flag means a different quarterback took most of the dropbacks last time out.
 
 | Game | Market home margin | Form home margin | Form − market | Home QB | Away QB |
 |:---|---:|---:|---:|:---|:---|
-| Delaware @ Middle Tennessee | -1.0 | +5.6 | +6.6 | same (Roman Gagliano) | **changed last game** (EJ Archield Jr.) |
-| Florida International @ Jacksonville State | +3.0 | +2.2 | -0.8 | same (Caden Creel) | same (J.J. Kohl) |
+| Kennesaw State @ Missouri State | -3.0 | +1.5 | +4.5 | same (Skyler Locklear) | same (Rickie Collins) |
+| Western Kentucky @ Sam Houston | -1.5 | +2.8 | +4.3 | same (Landyn Locke) | same (Brock Glenn) |
