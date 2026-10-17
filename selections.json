@@ -1,1 +1,29 @@
-[]
+[
+  {
+    "game": "Fresno State Bulldogs @ San Diego State Aztecs",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -16.0,
+    "odds": 255,
+    "book": "betrivers",
+    "edge": 0.06822759948250728
+  },
+  {
+    "game": "Louisville Cardinals @ Syracuse Orange",
+    "market": "alternate_spread",
+    "selection": "home",
+    "line": 10.0,
+    "odds": 160,
+    "book": "betrivers",
+    "edge": 0.06437242920962621
+  },
+  {
+    "game": "Louisiana Tech Bulldogs @ UL Monroe Warhawks",
+    "market": "alternate_spread",
+    "selection": "home",
+    "line": 10.0,
+    "odds": 165,
+    "book": "betrivers",
+    "edge": 0.06427055411561494
+  }
+]
