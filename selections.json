@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "game": "South Alabama Jaguars @ Marshall Thundering Herd",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -10.5,
+    "odds": 320,
+    "book": "betrivers",
+    "edge": 0.08390366949090516
+  }
+]
