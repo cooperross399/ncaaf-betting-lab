@@ -1,41 +1,42 @@
-# NCAAF card — 2026-10-29
+# NCAAF card — 2026-10-30
 
 **10 market(s) are allowlisted**: `alternate_spread`, `alternate_team_total`, `alternate_total_points`, `moneyline`, `moneyline_h1`, `spread`, `spread_h1`, `team_total`, `total_points`, `total_points_h1`. The approval records an owner's decision, not a measurement.
 
 Shapes fitted on 3,864 finished FBS-vs-FBS games, 2021-2025: 9 of 10 spread buckets and 6 of 6 total buckets carry enough games. Below the floor, so fixtures there get no opinion: spread -60 to -24 (56 games).
 
-## Slate (2 game(s) staged)
+## Slate (3 game(s) staged)
 
-Florida Atlantic Owls @ North Texas Mean Green, Troy Trojans @ James Madison Dukes
+Baylor Bears @ UCF Knights, Kent State Golden Flashes @ Sacramento State Hornets, Tulane Green Wave @ Charlotte 49ers
 
 ## Selections
 
 **None.** Markets are allowlisted, but nothing cleared every bar today. That is a genuine judgement about markets that were priced and modelled.
 
-**Edge floor.** 5 selection(s) on the kept side cleared 3.5% but not 6%, and were not selected: the card selects only edges strictly above 6%.
+**Edge floor.** 2 selection(s) on the kept side cleared 3.5% but not 6%, and were not selected: the card selects only edges strictly above 6%.
 
 ## The accounting identity
 
-`priced 2,814 = no_opinion 630 + unrated_opponent 0 + kickoff_tbd 0 + unresolved 0 + unparseable 0 + opinions 2,184 — reconciles.`
+`priced 4,117 = no_opinion 954 + unrated_opponent 0 + kickoff_tbd 0 + unresolved 0 + unparseable 0 + opinions 3,163 — reconciles.`
 
-- 502 x `alternate_team_total`: a team total needs the joint distribution of margin and total, which this lab has not measured
-- 32 x `moneyline_h1`: first-half markets have no model, and no in-season half-time score source exists to settle them (`docs/build_order.md`, 1.2)
-- 32 x `spread_h1`: first-half markets have no model, and no in-season half-time score source exists to settle them (`docs/build_order.md`, 1.2)
-- 32 x `team_total`: a team total needs the joint distribution of margin and total, which this lab has not measured
-- 32 x `total_points_h1`: first-half markets have no model, and no in-season half-time score source exists to settle them (`docs/build_order.md`, 1.2)
+- 768 x `alternate_team_total`: a team total needs the joint distribution of margin and total, which this lab has not measured
+- 48 x `team_total`: a team total needs the joint distribution of margin and total, which this lab has not measured
+- 46 x `moneyline_h1`: first-half markets have no model, and no in-season half-time score source exists to settle them (`docs/build_order.md`, 1.2)
+- 46 x `spread_h1`: first-half markets have no model, and no in-season half-time score source exists to settle them (`docs/build_order.md`, 1.2)
+- 46 x `total_points_h1`: first-half markets have no model, and no in-season half-time score source exists to settle them (`docs/build_order.md`, 1.2)
 
 ## Forward evidence
 
-2,184 opinion(s) frozen for 2026-10-29; 210,829 row(s) in the settled ledger. Frozen before kickoff, settled after, never repriced.
+3,163 opinion(s) frozen for 2026-10-30; 210,829 row(s) in the settled ledger. Frozen before kickoff, settled after, never repriced.
 
 ## Form and quarterbacks — context, not an opinion
 
 Refitted this run from every finished FBS-vs-FBS game, recent games weighing most. **These numbers do not move any probability above**: measured on 2022-2025 they added nothing to the closing or opening line (`data/outputs/nightly_form.md`), so they are a description of how teams are playing, not an edge.
 
-Form rating fitted on 4,308 games through 2026-10-29 12:44 UTC; home field +4.3 points.
+Form rating fitted on 4,308 games through 2026-10-30 12:57 UTC; home field +4.4 points.
 Quarterback reads come from cfbfastR's play-level file, which runs through 2026-10-25. **No free source names the coming game's starter**, and no league-wide college injury feed exists; a change flag means a different quarterback took most of the dropbacks last time out.
 
 | Game | Market home margin | Form home margin | Form − market | Home QB | Away QB |
 |:---|---:|---:|---:|:---|:---|
-| Florida Atlantic @ North Texas | +14.5 | +12.2 | -2.3 | same (Tayven Jackson) | same (Caden Veltkamp) |
-| Troy @ James Madison | +19.5 | +17.9 | -1.6 | same (Camden Coleman) | same (Will Crowder) |
+| Baylor @ UCF | -1.5 | +3.8 | +5.3 | same (Keyone Jenkins) | same (D.J. Lagway) |
+| Kent State @ Sacramento State | -7.0 | -3.5 | +3.5 | no read | no read |
+| Tulane @ Charlotte | -8.5 | -2.0 | +6.5 | **changed last game** (Conner Harrell) | **changed last game** (Trace Johnson) |
