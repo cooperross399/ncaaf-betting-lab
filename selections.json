@@ -1,1 +1,20 @@
-[]
+[
+  {
+    "game": "UTEP Miners @ North Dakota State Bison",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": 10.5,
+    "odds": 420,
+    "book": "fanduel",
+    "edge": 0.07520895137013747
+  },
+  {
+    "game": "Michigan Wolverines @ Rutgers Scarlet Knights",
+    "market": "alternate_spread",
+    "selection": "home",
+    "line": 9.5,
+    "odds": 190,
+    "book": "fanduel",
+    "edge": 0.0740839839962566
+  }
+]
