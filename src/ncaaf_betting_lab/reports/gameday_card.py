@@ -37,6 +37,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
+import math
 
 import pandas as pd
 
@@ -272,6 +273,61 @@ def cap_per_game(selections: list[dict]) -> tuple[list[dict], list[dict]]:
     return kept, dropped
 
 
+def _one_cent_better(odds: int) -> int:
+    """The next better American price. -101 improves to +100; -100 is +100."""
+    return odds + 1 if odds > 0 or odds < -101 else 100
+
+
+def _one_cent_worse(odds: int) -> int:
+    """The next worse American price. +100 worsens to -101."""
+    return odds - 1 if odds > 100 or odds < -100 else -101
+
+
+def bet_down_to(probability: float) -> int | None:
+    """The worst American price at which a pick still selects.
+
+    Cooper, 2026-11-01: "Lets always include a 'bet down to' number." Lines
+    move between the card and the moment he bets, so every pick carries the
+    price it is listed at AND the worst price it would still be listed at.
+
+    Computed with the card's own arithmetic, on the probability the card's
+    bar read: an edge is `probability - american_to_implied(odds)` and a pick
+    selects only when that edge is strictly above `CARD_EDGE_FLOOR`. So the
+    answer is the worst integer price whose implied probability sits strictly
+    below `probability - CARD_EDGE_FLOOR`.
+
+    Floored at `MAX_DEFAULT_JUICE`: the card selects nothing worse than that
+    price whatever the edge, so a bet-down-to past it would name a price the
+    card itself would refuse. `None` when no price clears the bar at all,
+    which a selected pick cannot be.
+    """
+    probability = float(probability)
+    target = probability - CARD_EDGE_FLOOR
+    if not 0.0 < target < 1.0:
+        return None
+    if target > 0.5:
+        # Favourite prices: implied = m / (m + 100) for a price of -m, so the
+        # bar holds for every m strictly below 100 * target / (1 - target).
+        m = math.ceil(100.0 * target / (1.0 - target)) - 1
+        odds = -m if m > 100 else 100
+    else:
+        # Underdog prices: implied = 100 / (odds + 100), so the bar holds for
+        # every odds strictly above 100 * (1 - target) / target.
+        odds = max(math.floor(100.0 * (1.0 - target) / target) + 1, 100)
+
+    # The estimate is settled with the card's own comparison, so floating
+    # point at the boundary can never name a price the bar would refuse, nor
+    # stop one cent short of the worst price it would take.
+    def clears(price: int) -> bool:
+        return probability - american_to_implied(price) > CARD_EDGE_FLOOR
+
+    while not clears(odds):
+        odds = _one_cent_better(odds)
+    while odds > MAX_DEFAULT_JUICE and clears(_one_cent_worse(odds)):
+        odds = _one_cent_worse(odds)
+    return max(odds, MAX_DEFAULT_JUICE)
+
+
 def above_floor(selections: list[dict]) -> tuple[list[dict], list[dict]]:
     """`(selected, below)`: only an edge strictly above `CARD_EDGE_FLOOR` selects."""
     selected = [p for p in selections if p["edge"] > CARD_EDGE_FLOOR]
@@ -344,6 +400,7 @@ def _candidates(
             "book": clean_text(getattr(row, "book", "")),
             "model_probability": probability,
             "edge": edge,
+            "bet_down_to": bet_down_to(probability),
         }
         if key not in best or odds > best[key]["odds"]:
             best[key] = candidate
@@ -416,6 +473,14 @@ def build_card(
     return result
 
 
+def _bet_down_to_cell(pick: Mapping[str, object]) -> str:
+    """The pick's bet-down-to price, recomputed when an older row lacks it."""
+    value = pick.get("bet_down_to")
+    if value is None and pick.get("model_probability") is not None:
+        value = bet_down_to(float(pick["model_probability"]))
+    return "—" if value is None else f"{int(value):+d}"
+
+
 def render(result: CardResult) -> str:
     lines: list[str] = []
     add = lines.append
@@ -453,15 +518,22 @@ def render(result: CardResult) -> str:
         if result.selections:
             add(NO_DEMONSTRATED_EDGE_NOTE)
             add("")
-            add("| Game | Market | Selection | Line | Price | Book | Model | Edge |")
-            add("|:-----|:-------|:----------|-----:|------:|:-----|------:|-----:|")
+            add(
+                "**Bet down to** is the worst price at which a pick still "
+                f"clears the card's {CARD_EDGE_FLOOR:.0%} edge bar, never worse "
+                f"than {MAX_DEFAULT_JUICE}. Below it, the pick is no longer a "
+                "selection."
+            )
+            add("")
+            add("| Game | Market | Selection | Line | Price | Book | Model | Edge | Bet down to |")
+            add("|:-----|:-------|:----------|-----:|------:|:-----|------:|-----:|------------:|")
             for pick in result.selections:
                 line = "—" if pick.get("line") is None else f"{pick['line']:+g}"
                 add(
                     f"| {pick['game']} | `{pick['market']}` | "
                     f"{pick['selection']} | {line} | {int(pick['odds']):+d} | "
                     f"{pick['book']} | {pick['model_probability']:.1%} | "
-                    f"{pick['edge']:+.1%} |"
+                    f"{pick['edge']:+.1%} | {_bet_down_to_cell(pick)} |"
                 )
             add("")
             add(
