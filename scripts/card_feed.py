@@ -34,6 +34,8 @@ from __future__ import annotations
 
 import argparse
 import base64
+import gzip
+import hashlib
 import json
 import os
 import subprocess
@@ -56,6 +58,25 @@ STATUS_FILE = "latest_status.json"
 CARD_FILE = "card.md"
 SELECTIONS_FILE = "selections.json"
 SNAPSHOTS_TREE = "snapshots"
+#: Where the forward ledger lives on the feed. The ledger is held on the feed
+#: as gzip, cut into byte slices, never as one CSV: on 2026-11-02 the single
+#: `forward_evidence.csv` reached 105 MB, GitHub refused the push (its file
+#: limit is 100 MB), and every publish after that failed. Growth is not a
+#: defect -- 220,466 frozen opinions over 22 slate days, each row carrying the
+#: same 186-character gate summary -- so the fix is the storage, not the rows.
+#: The local file under `data/processed/` stays one CSV, byte for byte; only
+#: the branch layout changed, so settlement and the reports read what they
+#: always read.
+LEDGER_TREE = "forward_evidence"
+LEDGER_PART_PREFIX = "forward_evidence.csv.gz.part"
+#: A slice well under GitHub's 100 MB refusal and its 50 MB warning.
+LEDGER_PART_BYTES = 40 * 1024 * 1024
+#: The file the feed held before the split. Still read, so the branch as it
+#: stood on 2026-11-02 restores; never written again.
+LEGACY_LEDGER = LEDGER_FILENAME
+#: Any blob at or above this is refused before the push, with a reason,
+#: rather than by GitHub after it.
+MAX_BLOB_BYTES = 95 * 1024 * 1024
 #: The operating-home issue. A contract string: matched exactly, em dash and
 #: all, so a near-miss posts nowhere rather than somewhere wrong.
 OPERATING_HOME = "NCAAF Betting Lab — Claude Operating Home"
@@ -124,6 +145,43 @@ def selections_changed(previous: list | None, current: list) -> bool:
         }
 
     return keys(previous) != keys(current)
+
+
+# -- the ledger's layout on the feed --------------------------------------
+
+
+def pack_ledger(data: bytes, *, part_bytes: int = LEDGER_PART_BYTES) -> dict[str, bytes]:
+    """The ledger as gzip, cut into named byte slices. Pure, so it is tested.
+
+    `mtime=0` makes the gzip a function of the CSV alone, so an unchanged
+    ledger hashes to unchanged blobs and the branch does not grow by a copy
+    of it every run. The slices are raw bytes of one stream, so restoring is
+    concatenation and nothing about CSV parsing can drop a row.
+    """
+    if part_bytes <= 0:
+        raise ValueError("part_bytes must be positive")
+    packed = gzip.compress(data, compresslevel=9, mtime=0)
+    parts: dict[str, bytes] = {}
+    for index, start in enumerate(range(0, len(packed), part_bytes)):
+        parts[f"{LEDGER_PART_PREFIX}{index:03d}"] = packed[start:start + part_bytes]
+    if unpack_ledger(parts) != data:
+        raise FeedError("the packed ledger does not unpack to the local ledger")
+    return parts
+
+
+def unpack_ledger(parts: dict[str, bytes]) -> bytes:
+    """The CSV back from its slices. Refuses a gap rather than guessing."""
+    names = sorted(parts)
+    expected = [f"{LEDGER_PART_PREFIX}{index:03d}" for index in range(len(names))]
+    if names != expected:
+        raise FeedError(
+            f"the feed's ledger slices are not a contiguous set: {names}. "
+            "A missing slice is a truncated ledger, and it is not restored."
+        )
+    try:
+        return gzip.decompress(b"".join(parts[name] for name in names))
+    except (OSError, EOFError) as exc:
+        raise FeedError(f"the feed's ledger does not decompress: {exc}") from exc
 
 
 # -- git, authenticated without putting the token in a URL ----------------
@@ -248,6 +306,21 @@ def cmd_standdown(league, *, respect: bool) -> int:
     return 0
 
 
+def read_feed_ledger(feed: Feed) -> bytes | None:
+    """The ledger as the feed holds it, in either layout, or None if absent.
+
+    The sliced tree wins when both are present: it is only ever written from
+    a ledger restored from the feed, so it is the newer of the two.
+    """
+    if feed.has(LEDGER_TREE):
+        names = feed.git("ls-tree", "--name-only", f"{TIP_REF}:{LEDGER_TREE}").split()
+        parts = {name: feed.show_bytes(f"{LEDGER_TREE}/{name}") for name in names}
+        return unpack_ledger(parts)
+    if feed.has(LEGACY_LEDGER):
+        return feed.show_bytes(LEGACY_LEDGER)
+    return None
+
+
 def cmd_restore(league) -> int:
     feed = _feed()
     ledger = PROCESSED_DIR / LEDGER_FILENAME
@@ -260,15 +333,15 @@ def cmd_restore(league) -> int:
             "on any later run the season's ledger is gone."
         )
         return 0
-    if feed.has(LEDGER_FILENAME):
-        data = feed.show_bytes(LEDGER_FILENAME)
+    data = read_feed_ledger(feed)
+    if data is None:
+        print("No ledger on the feed yet.")
+    else:
         if not data:
             raise FeedError("the feed's ledger is empty; refusing to restore nothing")
         ledger.write_bytes(data)
         rows = data.count(b"\n") - 1
-        print(f"Ledger restored: {rows} row(s).")
-    else:
-        print("No ledger on the feed yet.")
+        print(f"Ledger restored: {rows} row(s), sha256 {hashlib.sha256(data).hexdigest()[:12]}.")
     restored = 0
     if feed.has(SNAPSHOTS_TREE):
         for name in feed.git("ls-tree", "--name-only", f"{TIP_REF}:{SNAPSHOTS_TREE}").split():
@@ -292,6 +365,11 @@ def cmd_publish(league, *, run_id: str) -> int:
     status = next_status(previous, today=today, decision=decision, run_id=run_id)
 
     def blob(data: bytes) -> str:
+        if len(data) >= MAX_BLOB_BYTES:
+            raise FeedError(
+                f"a {len(data):,}-byte file would be refused by GitHub; "
+                "nothing was pushed"
+            )
         handle = feed.workdir / "blob.tmp"
         handle.write_bytes(data)
         return feed.git("hash-object", "-w", str(handle)).strip()
@@ -316,11 +394,23 @@ def cmd_publish(league, *, run_id: str) -> int:
 
     ledger = PROCESSED_DIR / LEDGER_FILENAME
     if ledger.is_file() and ledger.stat().st_size:
-        root.append(f"100644 blob {blob(ledger.read_bytes())}\t{LEDGER_FILENAME}")
-    elif has_tip and feed.has(LEDGER_FILENAME):
-        sha = feed.git("rev-parse", f"{TIP_REF}:{LEDGER_FILENAME}").strip()
-        root.append(f"100644 blob {sha}\t{LEDGER_FILENAME}")
+        local = ledger.read_bytes()
+        parts = pack_ledger(local)
+        entries = [f"100644 blob {blob(data)}\t{name}" for name, data in parts.items()]
+        sub = feed.git("mktree", stdin="\n".join(entries) + "\n").strip()
+        root.append(f"040000 tree {sub}\t{LEDGER_TREE}")
+        print(
+            f"Ledger packed: {len(local):,} bytes into {len(parts)} slice(s), "
+            f"{sum(len(p) for p in parts.values()):,} bytes compressed."
+        )
+    elif has_tip and feed.has(LEDGER_TREE):
+        sha = feed.git("rev-parse", f"{TIP_REF}:{LEDGER_TREE}").strip()
+        root.append(f"040000 tree {sha}\t{LEDGER_TREE}")
         print("::warning::No local ledger; carried the feed's copy forward.")
+    elif has_tip and feed.has(LEGACY_LEDGER):
+        sha = feed.git("rev-parse", f"{TIP_REF}:{LEGACY_LEDGER}").strip()
+        root.append(f"100644 blob {sha}\t{LEGACY_LEDGER}")
+        print("::warning::No local ledger; carried the feed's legacy copy forward.")
 
     snapshot_entries = [
         f"100644 blob {blob(path.read_bytes())}\t{path.name}"
