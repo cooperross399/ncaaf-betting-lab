@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "game": "Liberty Flames @ New Mexico State Aggies",
+    "market": "alternate_spread",
+    "selection": "home",
+    "line": 9.5,
+    "odds": 176,
+    "book": "fanduel",
+    "edge": 0.06555649169665684
+  }
+]
