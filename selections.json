@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "game": "Kansas Jayhawks @ West Virginia Mountaineers",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": -5.5,
+    "odds": 275,
+    "book": "betrivers",
+    "edge": 0.06131076897939103
+  }
+]
