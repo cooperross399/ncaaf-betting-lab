@@ -1,1 +1,11 @@
-[]
+[
+  {
+    "game": "Northern Illinois Huskies @ North Dakota State Bison",
+    "market": "alternate_spread",
+    "selection": "away",
+    "line": 12.5,
+    "odds": 420,
+    "book": "fanduel",
+    "edge": 0.07626801428258137
+  }
+]
